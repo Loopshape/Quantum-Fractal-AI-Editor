@@ -1,688 +1,313 @@
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import { Chart } from "chart.js/auto";
 
 // --- TYPE DEFINITIONS ---
-type AgentName = string; 
-type AgentState = 'IDLE' | 'THINKING' | 'COMMUNICATING' | 'DONE' | 'ERROR';
+type AgentName = string;
+type AgentState = 'IDLE' | 'THINKING' | 'DONE' | 'ERROR';
+type MindflowNodeState = 'superposition' | 'high-entropy' | 'high-qbit' | 'collapsed';
 
 interface Agent {
     name: AgentName;
-    state: AgentState;
     color: string;
-    description: string;
     persona: string;
+}
+
+interface MindflowNode {
+    id: string;
+    agentName: AgentName;
     content: string;
-    element: HTMLDivElement | null;
-    genesisHash?: string;
-    originHash?: string;
-    entropy?: number;
-    fractalScore?: number;
-    depRank?: number;
-    qbitScore?: number;
+    state: MindflowNodeState;
+    metrics?: {
+        entropy: number;
+        fractalScore: number;
+        depRank: number;
+        qbitStability: number;
+    };
+    depth: number;
 }
 
-interface Particle {
-    x: number;
-    y: number;
-    size: number;
-    color: string;
-    vx: number;
-    vy: number;
-    life: number;
-    initialLife: number;
-}
-
-interface AgentDefinition {
-    name: AgentName;
-    color: string;
-    description: string;
-    persona: string;
-}
-
-interface CommunicationFlow {
-    from: AgentName;
-    to: AgentName;
-}
-
-interface AgentConfiguration {
-    name: string;
-    agents: AgentDefinition[];
-    flow: CommunicationFlow[];
-}
-
-interface PersonaSet {
-    name: string;
-    personas: Record<AgentName, string>;
-}
-
-
-// --- CONSTANTS & CONFIGURATION ---
-const ORCHESTRATION_ROUNDS = 2; // Number of parallel reasoning rounds
-const DEFAULT_CONFIGS: Record<string, AgentConfiguration> = {
+// --- CONFIGURATION ---
+const ORCHESTRATION_ROUNDS = 2;
+const DEFAULT_CONFIGS: Record<string, { name: string; agents: Agent[] }> = {
     "Default Orchestration": {
         name: "Default Orchestration",
         agents: [
-            { name: 'Nexus', color: 'var(--agent-nexus)', description: 'Orchestrates tasks and synthesizes results.', persona: 'A meticulous project manager focused on clarity, coherence, and synthesizing collaborative thought into a final, actionable output.' },
-            { name: 'Cognito', color: 'var(--agent-cognito)', description: 'Analyzes context and generates solutions.', persona: 'A creative, first-principles thinker who explores unconventional ideas using fractal-based logic.' },
-            { name: 'Relay', color: 'var(--agent-relay)', description: 'Manages inter-agent communication.', persona: 'A concise and efficient communication hub, ensuring no data is lost during genesis-rehashed transmissions.' },
-            { name: 'Sentinel', color: 'var(--agent-sentinel)', description: 'Validates and tests generated code.', persona: 'A skeptical and rigorous tester who tries to break everything based on the origin-hashed specifications.' },
-            { name: 'Chrono', color: 'var(--agent-chrono)', description: 'Analyzes performance and suggests optimizations.', persona: 'An efficiency expert obsessed with optimizing for speed and resource usage, guided by quantum-state analysis.' },
-            { name: 'Guardian', color: 'var(--agent-guardian)', description: 'Detects security vulnerabilities.', persona: 'A paranoid security analyst who sees potential threats and attack vectors in every fragment of the thinking pool.' },
-            { name: 'Echo', color: 'var(--agent-echo)', description: 'Reflects on output and suggests improvements.', persona: 'A user-focused advocate, prioritizing readability, best practices, and alignment with the genesis hash.' },
-            { name: 'Fractal', color: 'var(--agent-fractal)', description: 'Identifies complex, self-similar patterns.', persona: 'A chaos mathematician who sees underlying geometric patterns and recursive structures in all data within the thinking pool.' },
-            { name: 'Quasar', color: 'var(--agent-quasar)', description: 'Verifies information against fundamental principles.', persona: 'A fundamental physicist who cross-references findings with universal constants and quantum truths derived from the genesis-rehashed logic.' },
-        ],
-        flow: [ // Note: This flow is now superseded by the parallel orchestration model but kept for configuration structure.
-            { from: 'Nexus', to: 'Cognito' },
-            { from: 'Cognito', to: 'Sentinel' },
-            { from: 'Sentinel', to: 'Chrono' },
-            { from: 'Chrono', to: 'Guardian' },
-            { from: 'Guardian', to: 'Echo' },
-            { from: 'Echo', to: 'Nexus' },
+            { name: 'Nexus', color: 'var(--nemodian-purple)', persona: 'A meticulous project manager focused on clarity, coherence, and synthesizing collaborative thought into a final, actionable output.' },
+            { name: 'Cognito', color: 'var(--nemodian-cyan)', persona: 'A creative, first-principles thinker who explores unconventional ideas using fractal-based logic.' },
+            { name: 'Sentinel', color: 'var(--nemodian-red)', persona: 'A skeptical and rigorous tester who tries to break everything based on the origin-hashed specifications.' },
+            { name: 'Chrono', color: 'var(--nemodian-orange)', persona: 'An efficiency expert obsessed with optimizing for speed and resource usage, guided by quantum-state analysis.' },
+            { name: 'Echo', color: 'var(--nemodian-green)', persona: 'A user-focused advocate, prioritizing readability, best practices, and alignment with the genesis hash.' },
         ]
     },
-    "Deep Analysis Loop": {
-        name: "Deep Analysis Loop",
-        agents: [
-            { name: 'Nexus', color: 'var(--agent-nexus)', description: 'Orchestrates tasks and synthesizes results.', persona: 'A meticulous project manager focused on clarity, coherence, and synthesizing collaborative thought into a final, actionable output.' },
-            { name: 'Cognito', color: 'var(--agent-cognito)', description: 'Analyzes context and generates solutions.', persona: 'A creative, first-principles thinker who explores unconventional ideas using fractal-based logic.' },
-            { name: 'Fractal', color: 'var(--agent-fractal)', description: 'Identifies complex, self-similar patterns.', persona: 'A chaos mathematician who sees underlying geometric patterns and recursive structures in all data within the thinking pool.' },
-            { name: 'Quasar', color: 'var(--agent-quasar)', description: 'Verifies information against fundamental principles.', persona: 'A fundamental physicist who cross-references findings with universal constants and quantum truths derived from the genesis-rehashed logic.' },
-        ],
-        flow: [
-            { from: 'Nexus', to: 'Cognito' },
-            { from: 'Cognito', to: 'Fractal' },
-            { from: 'Fractal', to: 'Quasar' },
-            { from: 'Quasar', to: 'Cognito' }, // Loop back for deeper analysis
-            { from: 'Cognito', to: 'Nexus' }
-        ]
-    }
 };
-
-const DEFAULT_PERSONA_SETS: Record<string, PersonaSet> = {
-    "Creative Writing": {
-        name: "Creative Writing",
-        personas: {
-            "Nexus": "A master storyteller, weaving together plot threads from all contributors into a captivating narrative.",
-            "Cognito": "A fountain of creative concepts, generating novel characters, settings, and plot twists.",
-            "Echo": "A literary critic who ensures the story is emotionally resonant, well-paced, and grammatically flawless.",
-            "Fractal": "An expert in narrative structure, identifying recurring themes and motifs to deepen the story's meaning."
-        }
-    },
-    "Code Generation": {
-        name: "Code Generation",
-        personas: {
-            "Nexus": "A lead software architect, responsible for the final code structure, integration, and documentation.",
-            "Cognito": "A brilliant algorithm designer who devises the core logic and data structures.",
-            "Sentinel": "A quality assurance engineer who writes exhaustive unit tests and integration tests.",
-            "Guardian": "A cybersecurity expert who performs penetration testing and hardens the code against vulnerabilities."
-        }
-    }
-}
 
 // --- GLOBALS & STATE ---
 let agents: Agent[] = [];
-let currentConfig: AgentConfiguration = DEFAULT_CONFIGS["Default Orchestration"];
+let currentConfig = DEFAULT_CONFIGS["Default Orchestration"];
 let ai: GoogleGenAI;
-let particles: Particle[] = [];
-let agentPositions: Record<AgentName, { x: number, y: number }> = {};
-
-
-// --- CRYPTOGRAPHIC HASHING UTILITIES ---
-async function sha256(message: string): Promise<string> {
-    const msgBuffer = new TextEncoder().encode(message);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
-    const hashArray = Array.from(new Uint8Array(hashBuffer));
-    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-}
-
-async function generateGenesisHash(): Promise<string> {
-    return sha256(`genesis-${Date.now()}-${Math.random()}`);
-}
-
-async function generateOriginHash(genesisHash: string, agentName: AgentName): Promise<string> {
-    return sha256(`${genesisHash}:${agentName}`);
-}
-
-async function rehash(previousHash: string, content: string): Promise<string> {
-    const contentSnippet = content.substring(0, 100);
-    return sha256(`${previousHash}:${contentSnippet}`);
-}
-
-// --- UTILITY FUNCTIONS ---
-function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
-    let timeout: ReturnType<typeof setTimeout> | null = null;
-
-    const debounced = (...args: Parameters<F>) => {
-        if (timeout !== null) {
-            clearTimeout(timeout);
-        }
-        timeout = setTimeout(() => func(...args), waitFor);
-    };
-
-    return debounced as (...args: Parameters<F>) => void;
-}
-
+let mindflowNodes: MindflowNode[] = [];
+let qbitChart: Chart;
 
 // --- DOM ELEMENTS ---
-const editor = document.getElementById('editor') as HTMLDivElement;
-const lineNumbers = document.getElementById('line-numbers') as HTMLDivElement;
-const promptInput = document.getElementById('prompt-input') as HTMLInputElement;
-const btnOrchestrate = document.getElementById('btn-orchestrate') as HTMLButtonElement;
-const aiPanel = document.getElementById('ai-response-panel') as HTMLDivElement;
-const closeAiPanelBtn = document.getElementById('close-ai-panel') as HTMLButtonElement;
-const leftToggle = document.getElementById('left-toggle') as HTMLButtonElement;
-const editorStage = document.getElementById('editor-stage') as HTMLElement;
-const leftPanel = document.getElementById('left-panel') as HTMLElement;
+const cliInput = document.getElementById('cli-input') as HTMLInputElement;
+const mindflowPanel = document.getElementById('mindflow-panel') as HTMLDivElement;
+const qbitChartCanvas = document.getElementById('qbit-chart') as HTMLCanvasElement;
+const topAgentsGrid = document.querySelector('#top-agents-container .top-agents-grid') as HTMLDivElement;
 const configSelector = document.getElementById('config-selector') as HTMLSelectElement;
 const btnLoadConfig = document.getElementById('btn-load-config') as HTMLButtonElement;
 const configNameInput = document.getElementById('config-name-input') as HTMLInputElement;
 const btnSaveConfig = document.getElementById('btn-save-config') as HTMLButtonElement;
 const personaEditor = document.getElementById('persona-editor') as HTMLDivElement;
-const commLogPanel = document.getElementById('comm-log-panel') as HTMLDivElement;
-const btnClearLog = document.getElementById('btn-clear-log') as HTMLButtonElement;
-const personaSetSelector = document.getElementById('persona-set-selector') as HTMLSelectElement;
-const btnLoadPersonaSet = document.getElementById('btn-load-persona-set') as HTMLButtonElement;
-const personaSetNameInput = document.getElementById('persona-set-name-input') as HTMLInputElement;
-const btnSavePersonaSet = document.getElementById('btn-save-persona-set') as HTMLButtonElement;
-const personaSetStatus = document.getElementById('persona-set-status') as HTMLDivElement;
-const flowCanvas = document.getElementById('agent-flow-canvas') as HTMLCanvasElement;
-const flowCtx = flowCanvas.getContext('2d')!;
-
-// --- EDITOR & UI FUNCTIONS ---
-
-function updateLineNumbers() {
-    const lines = editor.innerText.split('\n');
-    const lineCount = lines.length || 1;
-    lineNumbers.innerHTML = Array.from({ length: lineCount }, (_, i) => i + 1).join('<br>');
-}
-
-function syntaxHighlight() {
-    const text = editor.innerText;
-    // Basic highlighting logic
-    const highlighted = text
-        .replace(/(\/\*[\s\S]*?\*\/|\/\/.+)/g, '<span class="sh-comment">$1</span>') // comments
-        .replace(/(['"`])(.*?)\1/g, '<span class="sh-string">$1$2$1</span>') // strings
-        .replace(/\b(\d+(\.\d+)?)\b/g, '<span class="sh-number">$1</span>') // numbers
-        .replace(/\b(const|let|var|function|return|if|else|for|while|import|from|export|default|async|await|new|class|extends)\b/g, '<span class="sh-keyword">$1</span>') // keywords
-        .replace(/(\w+)\s*\(/g, '<span class="sh-function">$1</span>(') // functions
-        .replace(/([{}()[\],;])/g, '<span class="sh-bracket">$1</span>') // brackets
-        .replace(/([=+\-*/%<>!&|?:])/g, '<span class="sh-op">$1</span>'); // operators
-
-    // To prevent contenteditable issues, we need a more robust way
-    const selection = window.getSelection();
-    const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
-    const anchor = { node: range?.startContainer, offset: range?.startOffset };
-
-    editor.innerHTML = highlighted;
-    
-    // Restore cursor position (simplified)
-    if (range && anchor.node) {
-        try {
-            const newRange = document.createRange();
-            if (anchor.node.nodeType === Node.TEXT_NODE) {
-                newRange.setStart(anchor.node, Math.min(anchor.offset || 0, anchor.node.nodeValue?.length || 0));
-            } else {
-                 // Fallback for complex nodes
-                const textNodes = Array.from(editor.childNodes).filter(n => n.nodeType === Node.TEXT_NODE);
-                if (textNodes.length > 0) {
-                   newRange.setStart(textNodes[0], 0);
-                }
-            }
-            newRange.collapse(true);
-            selection?.removeAllRanges();
-            selection?.addRange(newRange);
-        } catch (e) {
-            console.warn("Could not restore cursor position.", e);
-        }
-    }
-}
-
-function setupInitialEditorContent() {
-    editor.innerText = `// Welcome to Nemodian 2244-1\n// The Quantum Fractal AI Editor\n\nfunction helloWorld() {\n  console.log("Ready to orchestrate greatness.");\n}\n\nhelloWorld();`;
-    updateLineNumbers();
-    syntaxHighlight();
-}
-
-function addLogEntry(sender: AgentName, receiver: AgentName, message: string) {
-    const entry = document.createElement('div');
-    entry.className = 'log-entry';
-    const senderAgent = agents.find(a => a.name === sender);
-    const receiverAgent = agents.find(a => a.name === receiver);
-    
-    entry.innerHTML = `
-        <span class="log-sender" style="color: ${senderAgent?.color || 'white'}">${sender}</span>
-        <span class="log-arrow">→</span>
-        <span class="log-receiver" style="color: ${receiverAgent?.color || 'white'}">${receiver}</span>
-        <span class="log-message">${message.substring(0, 100)}...</span>
-    `;
-    commLogPanel.appendChild(entry);
-    commLogPanel.scrollTop = commLogPanel.scrollHeight;
-}
-
-// --- AGENT & ORCHESTRATION UI ---
-
-function updateAgentState(name: AgentName, state: AgentState, content?: string, originHash?: string) {
-    const agent = agents.find(a => a.name === name);
-    if (!agent) return;
-
-    agent.state = state;
-    if (content) agent.content = content;
-    if (originHash) agent.originHash = originHash;
-
-    const card = agent.element;
-    if (!card) return;
-
-    const spinner = card.querySelector('.quantum-spinner') as HTMLElement;
-    const contentText = card.querySelector('.content-text') as HTMLElement;
-    const hashEl = card.querySelector('.agent-hash') as HTMLDivElement;
-
-    if (state === 'THINKING') {
-        spinner.style.display = 'inline-block';
-        card.classList.add('processing');
-        contentText.innerHTML = `<i>${content || 'Thinking...'}</i>`;
-    } else {
-        spinner.style.display = 'none';
-        card.classList.remove('processing');
-        contentText.innerHTML = content || agent.content;
-    }
-    
-    if (hashEl && agent.originHash) {
-        hashEl.textContent = `${agent.originHash.substring(0, 8)}...`;
-        hashEl.title = `Origin Hash: ${agent.originHash}`;
-    }
-}
-
-function updateAgentMetrics(name: AgentName, metrics: { entropy: number; fractalScore: number; depRank: number; qbitScore: number; }) {
-    const agent = agents.find(a => a.name === name);
-    if (!agent) return;
-
-    agent.entropy = metrics.entropy;
-    agent.fractalScore = metrics.fractalScore;
-    agent.depRank = metrics.depRank;
-    agent.qbitScore = metrics.qbitScore;
-    
-    const card = agent.element;
-    if (!card) return;
-
-    const headerRight = card.querySelector('.agent-header-right');
-    if (!headerRight) return;
-
-    let metricEl = headerRight.querySelector('.agent-qbit-score') as HTMLDivElement;
-    if (!metricEl) {
-        metricEl = document.createElement('div');
-        metricEl.className = 'agent-qbit-score';
-        headerRight.appendChild(metricEl);
-    }
-    metricEl.textContent = `Qbit: ${metrics.qbitScore.toFixed(2)}`;
-    metricEl.title = `E: ${metrics.entropy.toFixed(2)}, F: ${metrics.fractalScore.toFixed(2)}, D: ${metrics.depRank.toFixed(2)}`;
-}
 
 
-function renderAgentCard(agent: Agent): HTMLDivElement {
-    const card = document.createElement('div');
-    card.className = 'agent-card';
-    card.dataset.agentName = agent.name;
-    card.innerHTML = `
-        <div class="agent-header">
-            <div class="agent-title" style="color: ${agent.color};">${agent.name}</div>
-            <div class="agent-header-right">
-                <div class="agent-hash" title="Origin Hash">${agent.originHash ? `${agent.originHash.substring(0, 8)}...` : 'pending...'}</div>
+// --- UI RENDERING ---
+
+function renderMindflowNode(node: MindflowNode): string {
+    const agent = agents.find(a => a.name === node.agentName);
+    const metrics = node.metrics;
+    const metricsHtml = metrics ? `
+        <span>E: ${metrics.entropy.toFixed(1)}</span>
+        <span>F: ${metrics.fractalScore.toFixed(1)}</span>
+        <span>D: ${metrics.depRank.toFixed(1)}</span>
+        <span style="color: var(--nemodian-green);">Qbit: ${metrics.qbitStability.toFixed(2)}</span>
+    ` : 'Awaiting measurement...';
+
+    return `
+        <div class="mindflow-node node-${node.state}" id="node-${node.id}">
+            <div class="node-header">
+                <div class="node-title" style="color: ${agent?.color || 'white'}">${node.agentName}</div>
+                <div class="node-metrics">${metricsHtml}</div>
             </div>
-        </div>
-        <div class="agent-content">
-            <div class="quantum-spinner" style="display: none;"></div>
-            <span class="content-text">${agent.description}</span>
+            <div class="node-content">${node.content}</div>
         </div>
     `;
-    return card;
 }
 
-function renderAgentCards() {
-    const container = document.getElementById('agent-cards-container') || document.createElement('div');
-    container.id = 'agent-cards-container';
-    container.innerHTML = '';
-    
-    agents.forEach(agent => {
-        const card = renderAgentCard(agent);
-        agent.element = card;
-        container.appendChild(card);
-    });
-    
-    aiPanel.appendChild(container);
-    updateAgentPositions();
+function updateMindflowPanel() {
+    mindflowPanel.innerHTML = mindflowNodes.map(renderMindflowNode).join('');
+    mindflowPanel.parentElement!.scrollTop = mindflowPanel.parentElement!.scrollHeight;
 }
 
-function renderConsensusPanel(genesisHash: string) {
-    let consensusPanel = document.getElementById('consensus-panel');
-    if (!consensusPanel) {
-        consensusPanel = document.createElement('div');
-        consensusPanel.id = 'consensus-panel';
-        aiPanel.prepend(consensusPanel);
+function addNodeToMindflow(node: MindflowNode) {
+    mindflowNodes.push(node);
+    updateMindflowPanel();
+}
+
+function updateNodeInMindflow(nodeId: string, updates: Partial<MindflowNode>) {
+    const nodeIndex = mindflowNodes.findIndex(n => n.id === nodeId);
+    if (nodeIndex > -1) {
+        mindflowNodes[nodeIndex] = { ...mindflowNodes[nodeIndex], ...updates };
+        updateMindflowPanel();
     }
-    consensusPanel.className = 'consensus-panel';
-    
-    consensusPanel.innerHTML = `
-        <div class="consensus-header">
-            <span>Collaborative Thinking Pool</span>
-            <span title="Genesis Hash">${genesisHash.substring(0, 12)}...</span>
-        </div>
-        <div id="consensus-content"></div>
-    `;
 }
 
-function updateConsensusPanel(thinkingPool: Record<AgentName, string[]>) {
-    const contentDiv = document.getElementById('consensus-content');
-    if (!contentDiv) return;
-
-    let html = '';
-    for (const agentName in thinkingPool) {
-        if (thinkingPool[agentName].length > 0) {
-            const agent = agents.find(a => a.name === agentName);
-            html += `<div class="consensus-agent-block">`;
-            html += `<strong style="color: ${agent?.color || 'white'}">${agentName} contributions:</strong><ul>`;
-            thinkingPool[agentName].forEach((thought, index) => {
-                const thoughtSnippet = thought.replace(/</g, "&lt;").replace(/>/g, "&gt;");
-                html += `<li>Round ${index + 1}: ${thoughtSnippet.substring(0, 120)}...</li>`;
-            });
-            html += `</ul></div>`;
+function setupDashboard() {
+    const ctx = qbitChartCanvas.getContext('2d');
+    if (!ctx) return;
+    qbitChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Qbit Stability',
+                data: [],
+                borderColor: 'var(--nemodian-cyan)',
+                backgroundColor: 'rgba(120, 220, 232, 0.2)',
+                fill: true,
+                tension: 0.4,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            scales: {
+                y: { min: 0, max: 10, ticks: { color: 'var(--nemodian-grey)' }, grid: { color: 'var(--nemodian-grey)' } },
+                x: { ticks: { color: 'var(--nemodian-grey)' }, grid: { color: 'var(--nemodian-grey)' } }
+            },
+            plugins: { legend: { display: false } }
         }
-    }
-    contentDiv.innerHTML = html;
-    contentDiv.parentElement!.scrollTop = contentDiv.parentElement!.scrollHeight;
+    });
 }
 
-function updateTopAgentsPanel() {
-    let panel = document.getElementById('top-agents-panel');
-    if (!panel) {
-        panel = document.createElement('div');
-        panel.id = 'top-agents-panel';
-        panel.className = 'consensus-panel'; // Reuse styles
-        const container = document.getElementById('consensus-panel');
-        container?.parentNode?.insertBefore(panel, container.nextSibling);
-    }
-    
-    const scoredAgents = agents
-        .filter(a => a.qbitScore !== undefined)
-        .sort((a, b) => (b.qbitScore || 0) - (a.qbitScore || 0));
-    
-    const maxScore = Math.max(...scoredAgents.map(a => a.qbitScore || 0), 1);
+function updateDashboard(newQbitValue: number, round: number) {
+    // Update Chart
+    qbitChart.data.labels!.push(`R${round}`);
+    qbitChart.data.datasets[0].data.push(newQbitValue);
+    qbitChart.update('none');
 
-    let content = `<div class="consensus-header">📊 Top Agent Qbit Scores</div>`;
-    content += '<div class="top-agents-grid">';
+    // Update Top Agents
+    const scoredAgents = mindflowNodes
+        .filter(n => n.metrics)
+        .reduce((acc, node) => {
+            acc[node.agentName] = (acc[node.agentName] || 0) + node.metrics!.qbitStability;
+            return acc;
+        }, {} as Record<string, number>);
+    
+    const sortedAgents = Object.entries(scoredAgents)
+        .sort(([, a], [, b]) => b - a)
+        .map(([name, score]) => ({ name, score, agent: agents.find(a => a.name === name) }))
+        .filter(item => item.agent);
 
-    scoredAgents.forEach(agent => {
-        const score = agent.qbitScore || 0;
-        const barWidth = (score / 10) * 100; // Assuming max score is 10
-        content += `
-            <div class="agent-name" style="color: ${agent.color}">${agent.name}</div>
-            <div class="agent-score">${score.toFixed(2)}</div>
+    topAgentsGrid.innerHTML = sortedAgents.map(item => {
+        const barWidth = (item.score / (sortedAgents.length * 10)) * 100 * ORCHESTRATION_ROUNDS;
+        return `
+            <div style="color: ${item.agent!.color}">${item.agent!.name}</div>
             <div class="agent-bar-container">
-                <div class="agent-bar" style="width: ${barWidth}%; background-color: ${agent.color};"></div>
+                <div class="agent-bar" style="width: ${barWidth}%; background-color: ${item.agent!.color};"></div>
             </div>
         `;
-    });
-    content += '</div>';
-
-    panel.innerHTML = content;
+    }).join('');
 }
 
+// --- ORCHESTRATION LOGIC ---
 
-function showFinalResult(content: string, title: string) {
-    const finalResultContainer = document.createElement('div');
-    finalResultContainer.className = 'final-result-container consensus-panel'; // Reuse styles
-    finalResultContainer.style.marginTop = '20px';
-    finalResultContainer.style.borderColor = 'var(--accent)';
-
-    const pre = document.createElement('pre');
-    const code = document.createElement('code');
-    code.textContent = content;
-    pre.appendChild(code);
-
-    finalResultContainer.innerHTML = `<div class="consensus-header" style="color: var(--accent);">${title}</div>`;
-    finalResultContainer.appendChild(pre);
-
-    const buttons = document.createElement('div');
-    buttons.className = 'action-buttons';
-    buttons.innerHTML = `
-        <button id="btn-copy-result">Copy</button>
-        <button id="btn-insert-result">Insert into Editor</button>
-    `;
-    finalResultContainer.appendChild(buttons);
-
-    aiPanel.appendChild(finalResultContainer);
-    aiPanel.scrollTop = aiPanel.scrollHeight;
-
-    document.getElementById('btn-copy-result')?.addEventListener('click', () => {
-        navigator.clipboard.writeText(content);
-    });
-
-    document.getElementById('btn-insert-result')?.addEventListener('click', () => {
-        editor.innerText = content;
-        updateLineNumbers();
-        syntaxHighlight();
-    });
-}
-
-
-// --- CORE ORCHESTRATION LOGIC ---
-
-async function streamContentToAgent(agentName: string, prompt: string, isFinalAgent: boolean = false): Promise<string> {
+async function callGemini(prompt: string, isJson: boolean = false): Promise<string> {
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-pro',
             contents: prompt,
+            config: isJson ? { responseMimeType: 'application/json' } : undefined
         });
-        
-        const fullContent = response.text;
-        updateAgentState(agentName, 'DONE', fullContent);
-        
-        if (isFinalAgent) {
-            showFinalResult(fullContent, `${agentName} Synthesis`);
-        }
-        
-        return fullContent;
+        return response.text;
     } catch (error) {
-        console.error(`Error with agent ${agentName}:`, error);
-        const errorMessage = `Error: Could not get response. Check console.`;
-        updateAgentState(agentName, 'ERROR', errorMessage);
-        return errorMessage;
+        console.error("Gemini API Error:", error);
+        return `Error: Could not get response. See console for details.`;
     }
 }
 
-async function processAgentTurn(
-    agent: Agent,
-    userPrompt: string,
-    thinkingPool: Record<AgentName, string[]>,
-    genesisHash: string,
-    round: number
-): Promise<void> {
-    updateAgentState(agent.name, 'THINKING', `Round ${round}: Analyzing...`);
+async function processAgentTurn(agent: Agent, userPrompt: string, thinkingPool: Record<AgentName, string[]>, round: number): Promise<string> {
+    const nodeId = `${agent.name}-${round}`;
+    addNodeToMindflow({ id: nodeId, agentName: agent.name, content: 'Thinking...', state: 'superposition', depth: round });
 
     const collaborativeContext = JSON.stringify(thinkingPool, null, 2);
     const agentPrompt = `
-        **Genesis Hash (Task ID):** ${genesisHash}
-        **Your Origin Hash (Your ID):** ${agent.originHash}
         **Your Persona:** ${agent.persona}
         **Overall User Prompt:** "${userPrompt}"
-        
         **Current Collaborative Thinking Pool (Round ${round}):**
         ${collaborativeContext}
-
-        **Your Task:** Based on your persona, the user prompt, and the team's current thoughts, provide your next piece of analysis or contribution. Your thinking should be fractal, multi-layered, and build upon the existing ideas. Adhere to the principles of genesis-rehashed collaborative reasoning. Your output will be added to the pool for the next round. Focus on providing a concise, potent thought-fragment.
+        **Your Task:** Provide your next piece of analysis or contribution. Your thinking should be fractal and build upon existing ideas. Output a concise, potent thought-fragment.
     `;
-
-    const result = await streamContentToAgent(agent.name, agentPrompt, false);
     
+    const result = await callGemini(agentPrompt);
     thinkingPool[agent.name].push(result);
-    const newHash = await rehash(agent.originHash!, result);
-    
-    updateAgentState(agent.name, 'DONE', result, newHash);
-    updateConsensusPanel(thinkingPool);
+    updateNodeInMindflow(nodeId, { content: result });
+    return result;
 }
 
-async function processEvaluationPhase(nexusAgent: Agent, thinkingPool: Record<AgentName, string[]>, round: number) {
-    updateAgentState(nexusAgent.name, 'THINKING', `Evaluating Round ${round} contributions...`);
-
+async function processEvaluationPhase(thinkingPool: Record<AgentName, string[]>, round: number) {
     const contributionsToEvaluate: Record<string, string> = {};
-    for (const agentName in thinkingPool) {
-        // Evaluate the contribution from the current round
-        if (thinkingPool[agentName][round - 1]) {
-            contributionsToEvaluate[agentName] = thinkingPool[agentName][round - 1];
+    Object.keys(thinkingPool).forEach(name => {
+        if (thinkingPool[name][round - 1]) {
+            contributionsToEvaluate[name] = thinkingPool[name][round - 1];
         }
-    }
-    
-    if (Object.keys(contributionsToEvaluate).length === 0) {
-        updateAgentState(nexusAgent.name, 'DONE', `No new contributions to evaluate in Round ${round}.`);
-        return;
-    }
+    });
+
+    if (Object.keys(contributionsToEvaluate).length === 0) return;
 
     const evaluationPrompt = `
-        You are Nexus, the orchestrator. Your task is to evaluate the contributions from your team of AI agents for this round.
-        For each agent's contribution, you must provide a score for three metrics on a scale of 0.0 to 10.0:
-        1.  **Entropy**: How novel, surprising, or creative is the idea? High scores for unique, non-obvious contributions.
-        2.  **Fractal Score**: How deep, complex, and self-similar is the reasoning? High scores for contributions that show multi-layered thinking or identify underlying patterns.
-        3.  **Dependency Rank**: How well does this contribution build upon and connect with previous ideas in the thinking pool? High scores for contributions that synthesize or intelligently extend the existing context.
-
-        Analyze the following contributions:
-        ${JSON.stringify(contributionsToEvaluate, null, 2)}
-
-        Provide your evaluation in a JSON object format ONLY. The root object should have agent names as keys. Each value should be an object with "entropy", "fractalScore", and "depRank" keys. Do not include any other text or explanations. Example:
-        {
-          "Cognito": { "entropy": 8.5, "fractalScore": 7.0, "depRank": 5.0 },
-          "Sentinel": { "entropy": 6.0, "fractalScore": 9.0, "depRank": 8.0 }
-        }
-    `;
-
-    // FIX: Declare response outside the try block to make it accessible in the catch block.
-    let response: GenerateContentResponse | undefined;
-    try {
-        response = await ai.models.generateContent({
-            model: 'gemini-2.5-pro',
-            contents: evaluationPrompt,
-            config: {
-                responseMimeType: 'application/json'
-            }
-        });
-
-        const scores = JSON.parse(response.text);
-        for (const agentName in scores) {
-            if (agents.find(a => a.name === agentName) && scores[agentName]) {
-                const metrics = scores[agentName];
-                const { entropy = 0, fractalScore = 0, depRank = 0 } = metrics;
-                // Compute Qbit Score using the formula from the python script: fractal_score * 0.7 + entropy * 0.2 + dep_rank * 0.1
-                const qbitScore = (fractalScore * 0.7) + (entropy * 0.2) + (depRank * 0.1);
-                updateAgentMetrics(agentName, { entropy, fractalScore, depRank, qbitScore });
-            }
-        }
-        updateTopAgentsPanel();
-    } catch (e) {
-        console.error("Failed to parse evaluation scores:", e, response?.text);
-        updateAgentState(nexusAgent.name, 'ERROR', 'Failed to parse scores.');
-    }
-
-    updateAgentState(nexusAgent.name, 'DONE', `Evaluation for Round ${round} complete.`);
-}
-
-
-async function processNexusSynthesis(
-    nexusAgent: Agent, 
-    userPrompt: string, 
-    thinkingPool: Record<AgentName, string[]>
-) {
-    updateAgentState(nexusAgent.name, 'THINKING', 'Synthesizing final answer...');
-
-    const collaborativeContext = JSON.stringify(thinkingPool, null, 2);
-    const synthesisPrompt = `
-        **Your Persona:** ${nexusAgent.persona}
-        **Overall User Prompt:** "${userPrompt}"
-
-        **Final Collaborative Thinking Pool:**
-        ${collaborativeContext}
-
-        **Your Final Task:** You are the orchestrator, Nexus. Your purpose is to synthesize all contributions from the thinking pool into a single, coherent, and complete final answer that directly addresses the user's prompt. Assemble the origin-rehashed logic into a final solution. Prioritize the most novel and insightful contributions to form the core of your response. If the prompt requires code, provide ONLY the final, complete, and clean code block. If it's a question, provide a definitive answer.
+        You are Nexus, the orchestrator. Evaluate the contributions from your team. For each, provide a JSON object with scores for "entropy" (creativity), "fractalScore" (depth), and "depRank" (connectivity) on a 0.0-10.0 scale.
+        Analyze: ${JSON.stringify(contributionsToEvaluate, null, 2)}
+        Respond ONLY with the JSON object. Example: { "Cognito": { "entropy": 8.5, "fractalScore": 7.0, "depRank": 5.0 } }
     `;
     
-    await streamContentToAgent(nexusAgent.name, synthesisPrompt, true);
-    updateAgentState(nexusAgent.name, 'DONE', 'Synthesis complete.');
+    const scoresText = await callGemini(evaluationPrompt, true);
+    let totalQbit = 0;
+    let scoredCount = 0;
+    try {
+        const scores = JSON.parse(scoresText);
+        for (const agentName in scores) {
+            const nodeId = `${agentName}-${round}`;
+            const metrics = scores[agentName];
+            const { entropy = 0, fractalScore = 0, depRank = 0 } = metrics;
+            const qbitStability = (fractalScore * 0.7) + (entropy * 0.2) + (depRank * 0.1);
+            totalQbit += qbitStability;
+            scoredCount++;
+
+            let state: MindflowNodeState = 'collapsed';
+            if (entropy > 5) state = 'high-entropy';
+            else if (qbitStability > 7) state = 'high-qbit';
+
+            updateNodeInMindflow(nodeId, { metrics: { entropy, fractalScore, depRank, qbitStability }, state });
+        }
+    } catch (e) {
+        console.error("Failed to parse evaluation scores:", e, scoresText);
+    }
+    
+    const averageQbit = scoredCount > 0 ? totalQbit / scoredCount : 0;
+    updateDashboard(averageQbit, round);
+}
+
+async function processNexusSynthesis(userPrompt: string, thinkingPool: Record<AgentName, string[]>) {
+    const nodeId = `Nexus-Final`;
+    addNodeToMindflow({ id: nodeId, agentName: 'Nexus', content: 'Synthesizing final result...', state: 'superposition', depth: ORCHESTRATION_ROUNDS + 1 });
+
+    const synthesisPrompt = `
+        **Your Persona:** A meticulous project manager focused on clarity, coherence, and synthesizing collaborative thought.
+        **Overall User Prompt:** "${userPrompt}"
+        **Final Collaborative Thinking Pool:** ${JSON.stringify(thinkingPool, null, 2)}
+        **Your Final Task:** Synthesize all contributions into a single, coherent, and complete final answer that directly addresses the user's prompt. If the prompt requires code, provide ONLY the final, clean code block.
+    `;
+
+    const result = await callGemini(synthesisPrompt);
+    updateNodeInMindflow(nodeId, { content: result, state: 'collapsed', metrics: { entropy: 0, fractalScore: 10, depRank: 10, qbitStability: 8 } });
 }
 
 
+// --- COMMAND PROCESSING ---
 async function runOrchestration(prompt: string) {
     if (!prompt) return;
-    btnOrchestrate.disabled = true;
+    cliInput.disabled = true;
 
-    // --- PHASE 1: INITIALIZATION ---
-    aiPanel.style.display = 'block';
-    aiPanel.innerHTML = `<button id="close-ai-panel">×</button>`;
-    document.getElementById('close-ai-panel')?.addEventListener('click', () => {
-        aiPanel.style.display = 'none';
-    });
+    // Reset State
+    mindflowNodes = [];
+    qbitChart.data.labels = [];
+    qbitChart.data.datasets[0].data = [];
+    qbitChart.update();
+    topAgentsGrid.innerHTML = '';
+    
+    addNodeToMindflow({ id: 'prompt-0', agentName: 'USER', content: prompt, state: 'collapsed', depth: 0 });
 
-    const genesisHash = await generateGenesisHash();
-    renderConsensusPanel(genesisHash);
-    
-    const agentInitializationPromises = currentConfig.agents.map(async (agentDef) => {
-        const originHash = await generateOriginHash(genesisHash, agentDef.name);
-        const agent: Agent = {
-            ...agentDef,
-            state: 'IDLE',
-            content: agentDef.description,
-            element: null,
-            genesisHash,
-            originHash,
-        };
-        return agent;
-    });
-    agents = await Promise.all(agentInitializationPromises);
-    renderAgentCards();
-    updateTopAgentsPanel(); // Create initial empty panel
-    
     const thinkingPool: Record<AgentName, string[]> = {};
-    agents.forEach(agent => { thinkingPool[agent.name] = []; });
+    currentConfig.agents.forEach(agent => { thinkingPool[agent.name] = []; });
 
-    // --- PHASE 2: PARALLEL REASONING & EVALUATION ---
     for (let round = 1; round <= ORCHESTRATION_ROUNDS; round++) {
-        const reasoningPromises = agents
-            .filter(agent => agent.name !== 'Nexus') // Nexus evaluates, others reason
-            .map(agent => processAgentTurn(agent, prompt, thinkingPool, genesisHash, round));
-        await Promise.all(reasoningPromises);
-
-        const nexusAgent = agents.find(a => a.name === 'Nexus');
-        if (nexusAgent) {
-            await processEvaluationPhase(nexusAgent, thinkingPool, round);
-        }
-    }
-    
-    // --- PHASE 3: FINAL SYNTHESIS ---
-    const nexusAgent = agents.find(a => a.name === 'Nexus');
-    if (nexusAgent) {
-        await processNexusSynthesis(nexusAgent, prompt, thinkingPool);
-    } else {
-        console.error("Nexus agent not found for final synthesis.");
-        showFinalResult(JSON.stringify(thinkingPool, null, 2), "Synthesis Failed: Nexus not found.");
+        const reasoningAgents = currentConfig.agents.filter(a => a.name !== 'Nexus');
+        await Promise.all(
+            reasoningAgents.map(agent => processAgentTurn(agent, prompt, thinkingPool, round))
+        );
+        await processEvaluationPhase(thinkingPool, round);
     }
 
-    btnOrchestrate.disabled = false;
+    await processNexusSynthesis(prompt, thinkingPool);
+
+    cliInput.disabled = false;
+    cliInput.focus();
 }
 
-// --- VISUALIZATION ---
-function updateAgentPositions() {
-    const panelRect = aiPanel.getBoundingClientRect();
-    if (panelRect.width === 0) return; // Panel is hidden
-
-    const numAgents = agents.length;
-    const radius = Math.min(panelRect.width, panelRect.height) * 0.35;
-    const centerX = panelRect.left + panelRect.width / 2;
-    const centerY = panelRect.top + panelRect.height / 2;
-
-    agents.forEach((agent, i) => {
-        const angle = (i / numAgents) * 2 * Math.PI;
-        agentPositions[agent.name] = {
-            x: centerX + radius * Math.cos(angle),
-            y: centerY + radius * Math.sin(angle),
-        };
-    });
+function processCommand(command: string) {
+    const [cmd, ...args] = command.trim().split(' ');
+    const prompt = args.join(' ');
+    switch (cmd.toLowerCase()) {
+        case 'run':
+            runOrchestration(prompt);
+            cliInput.value = '';
+            break;
+        case 'help':
+            const helpContent = `Available Commands:
+- run <prompt>: Starts the AI orchestration.
+- clear: Clears the Mindflow panel.
+- help: Shows this help message.`;
+            addNodeToMindflow({ id: `help-${Date.now()}`, agentName: 'SYSTEM', content: helpContent, state: 'collapsed', depth: 0 });
+            break;
+        case 'clear':
+            mindflowNodes = [];
+            updateMindflowPanel();
+            break;
+        default:
+             addNodeToMindflow({ id: `err-${Date.now()}`, agentName: 'SYSTEM', content: `Unknown command: "${cmd}". Type 'help' for commands.`, state: 'high-entropy', depth: 0 });
+    }
 }
+
 
 // --- CONFIG & PERSONA MANAGEMENT ---
 function loadConfigs() {
@@ -691,9 +316,7 @@ function loadConfigs() {
     if (savedConfigs) {
         try {
             configs = { ...DEFAULT_CONFIGS, ...JSON.parse(savedConfigs) };
-        } catch (e) {
-            console.error("Failed to parse saved configs:", e);
-        }
+        } catch (e) { console.error("Failed to parse saved configs:", e); }
     }
     configSelector.innerHTML = '';
     Object.keys(configs).forEach(name => {
@@ -703,29 +326,25 @@ function loadConfigs() {
     return configs;
 }
 
-function applyConfig(config: AgentConfiguration) {
+function applyConfig(config: { name: string; agents: Agent[] }) {
     currentConfig = config;
+    agents = config.agents;
     configNameInput.value = config.name;
-    // We don't re-render agents immediately, but on orchestration start
-    // Update persona editor with agents from the new config
     renderPersonaEditor();
-    autoSaveCurrentConfig();
 }
 
 function saveConfig() {
     const savedConfigs = JSON.parse(localStorage.getItem('agentConfigs') || '{}');
     const newConfigName = configNameInput.value.trim();
-    if (!newConfigName) {
-        alert("Please enter a name for the configuration.");
-        return;
-    }
-    // Deep copy currentConfig and update personas from editor
-    const configToSave: AgentConfiguration = JSON.parse(JSON.stringify(currentConfig));
-    configToSave.name = newConfigName;
-    configToSave.agents.forEach(agentDef => {
-        const personaInput = personaEditor.querySelector(`[data-agent-name="${agentDef.name}"]`) as HTMLTextAreaElement;
-        if (personaInput) {
-            agentDef.persona = personaInput.value;
+    if (!newConfigName) return;
+
+    const configToSave = { name: newConfigName, agents: [] as Agent[] };
+    personaEditor.querySelectorAll('.persona-item').forEach(item => {
+        const name = (item.querySelector('label') as HTMLLabelElement).textContent || '';
+        const persona = (item.querySelector('textarea') as HTMLTextAreaElement).value;
+        const color = (item.querySelector('label') as HTMLLabelElement).style.color;
+        if (name) {
+            configToSave.agents.push({ name, persona, color });
         }
     });
 
@@ -733,179 +352,44 @@ function saveConfig() {
     localStorage.setItem('agentConfigs', JSON.stringify(savedConfigs));
     loadConfigs();
     configSelector.value = newConfigName;
-    alert(`Configuration '${newConfigName}' saved.`);
 }
 
 function renderPersonaEditor() {
-    personaEditor.innerHTML = '';
+    personaEditor.innerHTML = '<label>Agent Personas</label>';
     currentConfig.agents.forEach(agent => {
         const item = document.createElement('div');
-        item.className = 'persona-item';
+        item.className = 'config-group persona-item';
         item.innerHTML = `
             <label style="color: ${agent.color}">${agent.name}</label>
-            <textarea class="persona-input" data-agent-name="${agent.name}" rows="3">${agent.persona}</textarea>
+            <textarea data-agent-name="${agent.name}" rows="4">${agent.persona}</textarea>
         `;
         personaEditor.appendChild(item);
     });
 }
 
-function loadPersonaSets() {
-    const savedSets = localStorage.getItem('personaSets');
-    let sets = DEFAULT_PERSONA_SETS;
-    if (savedSets) {
-        try {
-            sets = { ...DEFAULT_PERSONA_SETS, ...JSON.parse(savedSets) };
-        } catch (e) { console.error("Failed to parse saved persona sets:", e); }
-    }
-    personaSetSelector.innerHTML = '<option value="">--Select a Set--</option>';
-    Object.keys(sets).forEach(name => {
-        const option = new Option(name, name);
-        personaSetSelector.add(option);
-    });
-    return sets;
-}
-
-function applyPersonaSet(set: PersonaSet) {
-    let appliedCount = 0;
-    currentConfig.agents.forEach(agentDef => {
-        if (set.personas[agentDef.name]) {
-            agentDef.persona = set.personas[agentDef.name];
-            appliedCount++;
-        }
-    });
-    renderPersonaEditor(); // Refresh editor to show new personas
-    autoSaveCurrentConfig(); // Auto-save after applying a new set
-    showStatusMessage(`Applied ${appliedCount} personas from "${set.name}".`, false);
-}
-
-function savePersonaSet() {
-    const sets = loadPersonaSets();
-    const newSetName = personaSetNameInput.value.trim();
-    if (!newSetName) {
-        showStatusMessage("Please enter a name for the persona set.", true);
-        return;
-    }
-    const newSet: PersonaSet = { name: newSetName, personas: {} };
-    let count = 0;
-    personaEditor.querySelectorAll('.persona-input').forEach(el => {
-        const input = el as HTMLTextAreaElement;
-        const agentName = input.dataset.agentName;
-        if (agentName && input.value) {
-            newSet.personas[agentName] = input.value;
-            count++;
-        }
-    });
-
-    if (count === 0) {
-        showStatusMessage("No personas to save.", true);
-        return;
-    }
-
-    sets[newSetName] = newSet;
-    localStorage.setItem('personaSets', JSON.stringify(sets));
-    loadPersonaSets();
-    personaSetSelector.value = newSetName;
-    showStatusMessage(`Persona set "${newSetName}" saved with ${count} personas.`, false);
-}
-
-function showStatusMessage(message: string, isError: boolean) {
-    personaSetStatus.textContent = message;
-    personaSetStatus.className = `status-message visible ${isError ? 'error' : ''}`;
-    setTimeout(() => {
-        personaSetStatus.classList.remove('visible');
-    }, 3000);
-}
-
-function autoSaveCurrentConfig() {
-    if (currentConfig) {
-        localStorage.setItem('autoSavedCurrentConfig', JSON.stringify(currentConfig));
-    }
-}
-
-
 // --- INITIALIZATION ---
 function main() {
-    setupInitialEditorContent();
+    setupDashboard();
     const allConfigs = loadConfigs();
-    const allPersonaSets = loadPersonaSets();
+    applyConfig(allConfigs[configSelector.value] || currentConfig);
 
-    const autoSavedConfigRaw = localStorage.getItem('autoSavedCurrentConfig');
-    let initialConfig = allConfigs[configSelector.value]; // Default
-    if (autoSavedConfigRaw) {
-        try {
-            const autoSavedConfig = JSON.parse(autoSavedConfigRaw) as AgentConfiguration;
-            initialConfig = autoSavedConfig;
-            if (allConfigs[autoSavedConfig.name]) {
-                configSelector.value = autoSavedConfig.name;
-            }
-        } catch (e) {
-            console.error("Failed to parse auto-saved config, using default.", e);
+    cliInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && cliInput.value) {
+            processCommand(cliInput.value);
         }
-    }
-    applyConfig(initialConfig);
-
-    const debouncedSyntaxHighlight = debounce(syntaxHighlight, 250);
-
-    editor.addEventListener('input', () => {
-        updateLineNumbers();
-        debouncedSyntaxHighlight();
-    });
-
-    personaEditor.addEventListener('input', (event) => {
-        const target = event.target as HTMLElement;
-        if (target && target.classList.contains('persona-input')) {
-            const input = target as HTMLTextAreaElement;
-            const agentName = input.dataset.agentName;
-            const agentToUpdate = currentConfig.agents.find(a => a.name === agentName);
-
-            if (agentToUpdate) {
-                agentToUpdate.persona = input.value;
-                autoSaveCurrentConfig();
-            }
-        }
-    });
-
-    btnOrchestrate.addEventListener('click', () => {
-        runOrchestration(promptInput.value || editor.innerText);
-    });
-    promptInput.addEventListener('keydown', (e) => {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            runOrchestration(promptInput.value);
-        }
-    });
-
-    closeAiPanelBtn.addEventListener('click', () => {
-        aiPanel.style.display = 'none';
-    });
-    
-    leftToggle.addEventListener('click', () => {
-        editorStage.classList.toggle('left-panel-open');
     });
 
     btnLoadConfig.addEventListener('click', () => {
         const selectedConfig = allConfigs[configSelector.value];
-        if (selectedConfig) {
-            applyConfig(selectedConfig);
-        }
+        if (selectedConfig) applyConfig(selectedConfig);
     });
     btnSaveConfig.addEventListener('click', saveConfig);
-
-    btnClearLog.addEventListener('click', () => commLogPanel.innerHTML = '');
-
-    btnLoadPersonaSet.addEventListener('click', () => {
-        const selectedSet = allPersonaSets[personaSetSelector.value];
-        if (selectedSet) {
-            applyPersonaSet(selectedSet);
-        }
-    });
-    btnSavePersonaSet.addEventListener('click', savePersonaSet);
 
     try {
         ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
     } catch (e) {
         console.error("Failed to initialize GoogleGenAI", e);
-        alert("Could not initialize AI. Is your API key set up correctly in the environment?");
+        addNodeToMindflow({ id: `init-err-${Date.now()}`, agentName: 'SYSTEM', content: 'Could not initialize AI. Is API key set correctly?', state: 'high-entropy', depth: 0 });
     }
 }
 
