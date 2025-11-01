@@ -256,6 +256,24 @@
             flex-direction: column;
             gap: 8px;
         }
+        
+        .status-message {
+            font-size: 11px;
+            padding: 5px 0;
+            text-align: center;
+            opacity: 0;
+            transition: opacity 0.3s ease-in-out;
+            height: 1em; /* prevent layout shift */
+            color: var(--success);
+        }
+        
+        .status-message.error {
+            color: var(--error);
+        }
+        
+        .status-message.visible {
+            opacity: 1;
+        }
 
         .persona-item {
             display: flex;
@@ -428,32 +446,28 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 4px;
+            gap: 10px;
         }
 
         .agent-title {
             font-weight: bold;
             font-size: 14px;
+            white-space: nowrap;
+        }
+
+        .agent-hash {
+            font-family: 'Fira Code', monospace;
+            font-size: 11px;
+            color: var(--muted-text);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100px;
+            cursor: help;
         }
         
         .agent-share-btn {
-            background: transparent;
-            border: 1px solid var(--muted);
-            color: var(--muted);
-            padding: 2px 6px;
-            cursor: pointer;
-            font-size: 11px;
-            transition: all .2s;
-            border-radius: 3px;
-            line-height: 1;
-            width: 60px;
-            text-align: center;
-            flex-shrink: 0;
-        }
-
-        .agent-share-btn:hover {
-            background: var(--hover-blue);
-            border-color: var(--hover-blue);
-            color: white;
+            display: none;
         }
 
         .agent-content {
@@ -553,15 +567,15 @@
         .sh-unknown { color: #f87171; }
         
         /* Quantum Scrollbar styling */
-        .editor-scroll-pane::-webkit-scrollbar, #ai-response-panel::-webkit-scrollbar, .comm-log-panel::-webkit-scrollbar, .consensus-panel::-webkit-scrollbar, #left-panel::-webkit-scrollbar {
+        .editor-scroll-pane::-webkit-scrollbar, #ai-response-panel::-webkit-scrollbar, #comm-log-panel::-webkit-scrollbar, .consensus-panel::-webkit-scrollbar, #left-panel::-webkit-scrollbar {
             width: 12px;
         }
 
-        .editor-scroll-pane::-webkit-scrollbar-track, #ai-response-panel::-webkit-scrollbar-track, .comm-log-panel::-webkit-scrollbar-track, .consensus-panel::-webkit-scrollbar-track, #left-panel::-webkit-scrollbar-track {
+        .editor-scroll-pane::-webkit-scrollbar-track, #ai-response-panel::-webkit-scrollbar-track, #comm-log-panel::-webkit-scrollbar-track, .consensus-panel::-webkit-scrollbar-track, #left-panel::-webkit-scrollbar-track {
             background: var(--panel);
         }
 
-        .editor-scroll-pane::-webkit-scrollbar-thumb, #ai-response-panel::-webkit-scrollbar-thumb, .comm-log-panel::-webkit-scrollbar-thumb, .consensus-panel::-webkit-scrollbar-thumb, #left-panel::-webkit-scrollbar-thumb {
+        .editor-scroll-pane::-webkit-scrollbar-thumb, #ai-response-panel::-webkit-scrollbar-thumb, #comm-log-panel::-webkit-scrollbar-thumb, .consensus-panel::-webkit-scrollbar-thumb, #left-panel::-webkit-scrollbar-thumb {
             background-color: var(--muted-text);
             border-radius: 6px;
             border: 3px solid var(--panel);
@@ -613,7 +627,7 @@
             overflow-y: auto;
             z-index: 100;
             display: none;
-            box-shadow: 0 4px 12px rgba(0,0,0,.3);
+            flex-shadow: 0 4px 12px rgba(0,0,0,.3);
         }
         
         #close-ai-panel {
@@ -679,13 +693,13 @@
 
 
         /* New Consensus Panel Styles */
-        .consensus-panel {
-            background: var(--panel);
+        #consensus-panel {
+            background: #2a2c21; /* Slightly different from panel */
             border: 1px solid var(--agent-nexus);
             border-radius: 8px;
             padding: 15px;
-            margin-top: 15px;
-            max-height: 300px;
+            margin-bottom: 15px; /* space between it and agent cards */
+            max-height: 250px;
             overflow-y: auto;
         }
 
@@ -696,8 +710,33 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            border-bottom: 1px solid #4a4e40;
+            padding-bottom: 8px;
+        }
+
+        .consensus-agent-block {
+            margin-bottom: 8px;
+        }
+
+        .consensus-agent-block strong {
+            font-size: 12px;
+        }
+
+        .consensus-agent-block ul {
+            list-style-type: '» ';
+            padding-left: 15px;
+            margin: 4px 0 0 0;
+            font-size: 11px;
+            color: #ccc;
         }
     </style>
+<script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0"
+  }
+}
+</script>
 </head>
 <body>
     <header>
@@ -732,6 +771,7 @@
             <label for="persona-set-name-input">Save Personas As:</label>
             <input type="text" id="persona-set-name-input" placeholder="New Persona Set Name">
             <button id="btn-save-persona-set" class="small">Save Personas</button>
+            <div id="persona-set-status" class="status-message"></div>
             <hr>
             <h4 class="left-panel-header">Agent Personas</h4>
             <div id="persona-editor"></div>
@@ -760,7 +800,7 @@
 
     <div id="ai-response-panel">
         <button id="close-ai-panel">×</button>
-        <!-- Agent cards will be dynamically inserted here -->
+        <!-- Consensus panel and Agent cards will be dynamically inserted here -->
     </div>
     
     <script type="module" src="/index.js"></script>

@@ -1,5 +1,7 @@
+import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+
 // --- TYPE DEFINITIONS ---
-type AgentName = string; // More flexible for custom configs
+type AgentName = string; 
 type AgentState = 'IDLE' | 'THINKING' | 'COMMUNICATING' | 'DONE' | 'ERROR';
 
 interface Agent {
@@ -10,6 +12,8 @@ interface Agent {
     persona: string;
     content: string;
     element: HTMLDivElement | null;
+    genesisHash?: string;
+    originHash?: string;
 }
 
 interface Particle {
@@ -48,21 +52,22 @@ interface PersonaSet {
 
 
 // --- CONSTANTS & CONFIGURATION ---
+const ORCHESTRATION_ROUNDS = 2; // Number of parallel reasoning rounds
 const DEFAULT_CONFIGS: Record<string, AgentConfiguration> = {
     "Default Orchestration": {
         name: "Default Orchestration",
         agents: [
-            { name: 'Nexus', color: 'var(--agent-nexus)', description: 'Orchestrates tasks and synthesizes results.', persona: 'A meticulous project manager focused on clarity and coherence.' },
-            { name: 'Cognito', color: 'var(--agent-cognito)', description: 'Analyzes context and generates solutions.', persona: 'A creative, first-principles thinker who explores unconventional ideas.' },
-            { name: 'Relay', color: 'var(--agent-relay)', description: 'Manages inter-agent communication.', persona: 'A concise and efficient communication hub, ensuring no data is lost.' },
-            { name: 'Sentinel', color: 'var(--agent-sentinel)', description: 'Validates and tests generated code.', persona: 'A skeptical and rigorous tester who tries to break everything.' },
-            { name: 'Chrono', color: 'var(--agent-chrono)', description: 'Analyzes performance and suggests optimizations.', persona: 'An efficiency expert obsessed with optimizing for speed and resource usage.' },
-            { name: 'Guardian', color: 'var(--agent-guardian)', description: 'Detects security vulnerabilities.', persona: 'A paranoid security analyst who sees potential threats everywhere.' },
-            { name: 'Echo', color: 'var(--agent-echo)', description: 'Reflects on output and suggests improvements.', persona: 'A user-focused advocate, prioritizing readability and best practices.' },
-            { name: 'Fractal', color: 'var(--agent-fractal)', description: 'Identifies complex, self-similar patterns.', persona: 'A chaos mathematician who sees underlying geometric patterns and recursive structures in all data.' },
-            { name: 'Quasar', color: 'var(--agent-quasar)', description: 'Verifies information against fundamental principles.', persona: 'A fundamental physicist who cross-references findings with universal constants and quantum truths.' },
+            { name: 'Nexus', color: 'var(--agent-nexus)', description: 'Orchestrates tasks and synthesizes results.', persona: 'A meticulous project manager focused on clarity, coherence, and synthesizing collaborative thought into a final, actionable output.' },
+            { name: 'Cognito', color: 'var(--agent-cognito)', description: 'Analyzes context and generates solutions.', persona: 'A creative, first-principles thinker who explores unconventional ideas using fractal-based logic.' },
+            { name: 'Relay', color: 'var(--agent-relay)', description: 'Manages inter-agent communication.', persona: 'A concise and efficient communication hub, ensuring no data is lost during genesis-rehashed transmissions.' },
+            { name: 'Sentinel', color: 'var(--agent-sentinel)', description: 'Validates and tests generated code.', persona: 'A skeptical and rigorous tester who tries to break everything based on the origin-hashed specifications.' },
+            { name: 'Chrono', color: 'var(--agent-chrono)', description: 'Analyzes performance and suggests optimizations.', persona: 'An efficiency expert obsessed with optimizing for speed and resource usage, guided by quantum-state analysis.' },
+            { name: 'Guardian', color: 'var(--agent-guardian)', description: 'Detects security vulnerabilities.', persona: 'A paranoid security analyst who sees potential threats and attack vectors in every fragment of the thinking pool.' },
+            { name: 'Echo', color: 'var(--agent-echo)', description: 'Reflects on output and suggests improvements.', persona: 'A user-focused advocate, prioritizing readability, best practices, and alignment with the genesis hash.' },
+            { name: 'Fractal', color: 'var(--agent-fractal)', description: 'Identifies complex, self-similar patterns.', persona: 'A chaos mathematician who sees underlying geometric patterns and recursive structures in all data within the thinking pool.' },
+            { name: 'Quasar', color: 'var(--agent-quasar)', description: 'Verifies information against fundamental principles.', persona: 'A fundamental physicist who cross-references findings with universal constants and quantum truths derived from the genesis-rehashed logic.' },
         ],
-        flow: [
+        flow: [ // Note: This flow is now superseded by the parallel orchestration model but kept for configuration structure.
             { from: 'Nexus', to: 'Cognito' },
             { from: 'Cognito', to: 'Sentinel' },
             { from: 'Sentinel', to: 'Chrono' },
@@ -74,637 +79,697 @@ const DEFAULT_CONFIGS: Record<string, AgentConfiguration> = {
     "Deep Analysis Loop": {
         name: "Deep Analysis Loop",
         agents: [
-            { name: 'Nexus', color: 'var(--agent-nexus)', description: 'Orchestrates the analysis task.', persona: 'A meticulous project manager initiating deep analysis.' },
-            { name: 'Cognito', color: 'var(--agent-cognito)', description: 'Generates initial hypotheses and data.', persona: 'A creative, first-principles thinker exploring the problem space.' },
-            { name: 'Fractal', color: 'var(--agent-fractal)', description: 'Identifies complex patterns in the data.', persona: 'A chaos mathematician seeking recursive structures.' },
-            { name: 'Quasar', color: 'var(--agent-quasar)', description: 'Verifies patterns against core principles.', persona: 'A physicist validating findings with fundamental truths.' },
-            { name: 'Echo', color: 'var(--agent-echo)', description: 'Reflects on the verified insights.', persona: 'A senior strategist focusing on the implications of the findings.' },
+            { name: 'Nexus', color: 'var(--agent-nexus)', description: 'Orchestrates tasks and synthesizes results.', persona: 'A meticulous project manager focused on clarity, coherence, and synthesizing collaborative thought into a final, actionable output.' },
+            { name: 'Cognito', color: 'var(--agent-cognito)', description: 'Analyzes context and generates solutions.', persona: 'A creative, first-principles thinker who explores unconventional ideas using fractal-based logic.' },
+            { name: 'Fractal', color: 'var(--agent-fractal)', description: 'Identifies complex, self-similar patterns.', persona: 'A chaos mathematician who sees underlying geometric patterns and recursive structures in all data within the thinking pool.' },
+            { name: 'Quasar', color: 'var(--agent-quasar)', description: 'Verifies information against fundamental principles.', persona: 'A fundamental physicist who cross-references findings with universal constants and quantum truths derived from the genesis-rehashed logic.' },
         ],
         flow: [
             { from: 'Nexus', to: 'Cognito' },
             { from: 'Cognito', to: 'Fractal' },
             { from: 'Fractal', to: 'Quasar' },
-            { from: 'Quasar', to: 'Echo' },
-            { from: 'Echo', to: 'Nexus' },
-        ]
-    },
-    "Code Review Loop": {
-        name: "Code Review Loop",
-        agents: [
-            { name: 'Cognito', color: 'var(--agent-cognito)', description: 'Proposes initial code implementation.', persona: 'A pragmatic developer who values speed and functionality.' },
-            { name: 'Sentinel', color: 'var(--agent-sentinel)', description: 'Performs static analysis and testing.', persona: 'An automated linter and testing framework, strictly enforcing rules.' },
-            { name: 'Chrono', color: 'var(--agent-chrono)', description: 'Analyzes performance and suggests optimizations.', persona: 'An efficiency expert obsessed with optimizing for speed and resource usage.' },
-            { name: 'Guardian', color: 'var(--agent-guardian)', description: 'Detects security vulnerabilities.', persona: 'A paranoid security analyst who sees potential threats everywhere.' },
-            { name: 'Echo', color: 'var(--agent-echo)', description: 'Reviews for style, clarity, and best practices.', persona: 'A senior developer with a focus on long-term maintainability.' },
-        ],
-        flow: [
-            { from: 'Cognito', to: 'Sentinel' },
-            { from: 'Sentinel', to: 'Chrono' },
-            { from: 'Chrono', to: 'Guardian' },
-            { from: 'Guardian', to: 'Echo' },
-            { from: 'Echo', to: 'Cognito' },
-        ]
-    },
-    "Simple Loop": {
-        name: "Simple Loop",
-        agents: [
-            { name: 'Nexus', color: 'var(--agent-nexus)', description: 'Orchestrates tasks and synthesizes results.', persona: 'A meticulous project manager focused on clarity and coherence.' },
-            { name: 'Cognito', color: 'var(--agent-cognito)', description: 'Analyzes context and generates solutions.', persona: 'A creative, first-principles thinker who explores unconventional ideas.' },
-            { name: 'Sentinel', color: 'var(--agent-sentinel)', description: 'Validates and tests generated code.', persona: 'A skeptical and rigorous tester who tries to break everything.' },
-        ],
-        flow: [
-            { from: 'Nexus', to: 'Cognito' },
-            { from: 'Cognito', to: 'Sentinel' },
-            { from: 'Sentinel', to: 'Nexus' },
-        ]
-    },
-    "Expanded Security Loop": {
-        name: "Expanded Security Loop",
-        agents: [
-            { name: 'Nexus', color: 'var(--agent-nexus)', description: 'Orchestrates tasks and synthesizes results.', persona: 'A meticulous project manager focused on clarity and coherence.' },
-            { name: 'Cognito', color: 'var(--agent-cognito)', description: 'Analyzes context and generates solutions.', persona: 'A creative, first-principles thinker who explores unconventional ideas.' },
-            { name: 'Sentinel', color: 'var(--agent-sentinel)', description: 'Validates and tests generated code.', persona: 'A skeptical and rigorous tester who tries to break everything.' },
-            { name: 'Chrono', color: 'var(--agent-chrono)', description: 'Analyzes performance and suggests optimizations.', persona: 'An efficiency expert obsessed with optimizing for speed and resource usage.' },
-            { name: 'Guardian', color: 'var(--agent-guardian)', description: 'Detects security vulnerabilities.', persona: 'A paranoid security analyst who sees potential threats everywhere.' },
-        ],
-        flow: [
-            { from: 'Nexus', to: 'Cognito' },
-            { from: 'Cognito', to: 'Sentinel' },
-            { from: 'Sentinel', to: 'Chrono' },
-            { from: 'Chrono', to: 'Guardian' },
-            { from: 'Guardian', to: 'Nexus' },
+            { from: 'Quasar', to: 'Cognito' }, // Loop back for deeper analysis
+            { from: 'Cognito', to: 'Nexus' }
         ]
     }
 };
 
-const PARTICLE_COUNT = 30;
-const PARTICLE_SPEED = 1.5;
-const PARTICLE_LIFE = 150;
-
-// --- APPLICATION STATE ---
-let agents: Record<AgentName, Agent> = {} as any;
-let particles: Particle[] = [];
-let animationFrameId: number | null = null;
-let isSimulating = false;
-let communicationLinks: { from: AgentName; to: AgentName }[] = [];
-let savedConfigurations: Record<string, AgentConfiguration> = {};
-let savedPersonaSets: Record<string, PersonaSet> = {};
-let currentConfiguration: AgentConfiguration;
-
-// --- DOM ELEMENT REFERENCES ---
-let editor: HTMLDivElement,
-    lineNumbers: HTMLDivElement,
-    orchestrateButton: HTMLButtonElement,
-    aiResponsePanel: HTMLDivElement,
-    closeAiPanelButton: HTMLButtonElement,
-    leftToggleButton: HTMLButtonElement,
-    editorStage: HTMLDivElement,
-    flowCanvas: HTMLCanvasElement,
-    flowCtx: CanvasRenderingContext2D,
-    configSelector: HTMLSelectElement,
-    loadConfigButton: HTMLButtonElement,
-    saveConfigButton: HTMLButtonElement,
-    configNameInput: HTMLInputElement,
-    personaEditorContainer: HTMLDivElement,
-    personaSetSelector: HTMLSelectElement,
-    loadPersonaSetButton: HTMLButtonElement,
-    savePersonaSetButton: HTMLButtonElement,
-    personaSetNameInput: HTMLInputElement,
-    commLogPanel: HTMLDivElement,
-    clearLogButton: HTMLButtonElement;
-
-
-// --- UTILITY FUNCTIONS ---
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-
-// --- EDITOR LOGIC ---
-function updateLineNumbers() {
-    if (!editor || !lineNumbers) return;
-    const lineCount = editor.innerText.split('\n').length;
-    lineNumbers.innerHTML = Array.from({ length: lineCount }, (_, i) => i + 1).join('\n');
+const DEFAULT_PERSONA_SETS: Record<string, PersonaSet> = {
+    "Creative Writing": {
+        name: "Creative Writing",
+        personas: {
+            "Nexus": "A master storyteller, weaving together plot threads from all contributors into a captivating narrative.",
+            "Cognito": "A fountain of creative concepts, generating novel characters, settings, and plot twists.",
+            "Echo": "A literary critic who ensures the story is emotionally resonant, well-paced, and grammatically flawless.",
+            "Fractal": "An expert in narrative structure, identifying recurring themes and motifs to deepen the story's meaning."
+        }
+    },
+    "Code Generation": {
+        name: "Code Generation",
+        personas: {
+            "Nexus": "A lead software architect, responsible for the final code structure, integration, and documentation.",
+            "Cognito": "A brilliant algorithm designer who devises the core logic and data structures.",
+            "Sentinel": "A quality assurance engineer who writes exhaustive unit tests and integration tests.",
+            "Guardian": "A cybersecurity expert who performs penetration testing and hardens the code against vulnerabilities."
+        }
+    }
 }
 
-// --- AGENT & VISUALIZATION LOGIC ---
+// --- GLOBALS & STATE ---
+let agents: Agent[] = [];
+let currentConfig: AgentConfiguration = DEFAULT_CONFIGS["Default Orchestration"];
+let ai: GoogleGenAI;
+let particles: Particle[] = [];
+let agentPositions: Record<AgentName, { x: number, y: number }> = {};
 
-function initializeAgents() {
-    agents = currentConfiguration.agents.reduce((acc, def) => {
-        acc[def.name] = {
-            ...def,
-            state: 'IDLE',
-            content: 'Waiting for task...',
-            element: null,
-        };
-        return acc;
-    }, {} as Record<AgentName, Agent>);
+
+// --- CRYPTOGRAPHIC HASHING UTILITIES ---
+async function sha256(message: string): Promise<string> {
+    const msgBuffer = new TextEncoder().encode(message);
+    const hashBuffer = await crypto.subtle.digest('SHA-256', msgBuffer);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+async function generateGenesisHash(): Promise<string> {
+    return sha256(`genesis-${Date.now()}-${Math.random()}`);
+}
+
+async function generateOriginHash(genesisHash: string, agentName: AgentName): Promise<string> {
+    return sha256(`${genesisHash}:${agentName}`);
+}
+
+async function rehash(previousHash: string, content: string): Promise<string> {
+    const contentSnippet = content.substring(0, 100);
+    return sha256(`${previousHash}:${contentSnippet}`);
+}
+
+// --- UTILITY FUNCTIONS ---
+function debounce<F extends (...args: any[]) => any>(func: F, waitFor: number) {
+    let timeout: ReturnType<typeof setTimeout> | null = null;
+
+    const debounced = (...args: Parameters<F>) => {
+        if (timeout !== null) {
+            clearTimeout(timeout);
+        }
+        timeout = setTimeout(() => func(...args), waitFor);
+    };
+
+    return debounced as (...args: Parameters<F>) => void;
+}
+
+
+// --- DOM ELEMENTS ---
+const editor = document.getElementById('editor') as HTMLDivElement;
+const lineNumbers = document.getElementById('line-numbers') as HTMLDivElement;
+const promptInput = document.getElementById('prompt-input') as HTMLInputElement;
+const btnOrchestrate = document.getElementById('btn-orchestrate') as HTMLButtonElement;
+const aiPanel = document.getElementById('ai-response-panel') as HTMLDivElement;
+const closeAiPanelBtn = document.getElementById('close-ai-panel') as HTMLButtonElement;
+const leftToggle = document.getElementById('left-toggle') as HTMLButtonElement;
+const editorStage = document.getElementById('editor-stage') as HTMLElement;
+const leftPanel = document.getElementById('left-panel') as HTMLElement;
+const configSelector = document.getElementById('config-selector') as HTMLSelectElement;
+const btnLoadConfig = document.getElementById('btn-load-config') as HTMLButtonElement;
+const configNameInput = document.getElementById('config-name-input') as HTMLInputElement;
+const btnSaveConfig = document.getElementById('btn-save-config') as HTMLButtonElement;
+const personaEditor = document.getElementById('persona-editor') as HTMLDivElement;
+const commLogPanel = document.getElementById('comm-log-panel') as HTMLDivElement;
+const btnClearLog = document.getElementById('btn-clear-log') as HTMLButtonElement;
+const personaSetSelector = document.getElementById('persona-set-selector') as HTMLSelectElement;
+const btnLoadPersonaSet = document.getElementById('btn-load-persona-set') as HTMLButtonElement;
+const personaSetNameInput = document.getElementById('persona-set-name-input') as HTMLInputElement;
+const btnSavePersonaSet = document.getElementById('btn-save-persona-set') as HTMLButtonElement;
+const personaSetStatus = document.getElementById('persona-set-status') as HTMLDivElement;
+const flowCanvas = document.getElementById('agent-flow-canvas') as HTMLCanvasElement;
+const flowCtx = flowCanvas.getContext('2d')!;
+
+// --- EDITOR & UI FUNCTIONS ---
+
+function updateLineNumbers() {
+    const lines = editor.innerText.split('\n');
+    const lineCount = lines.length || 1;
+    lineNumbers.innerHTML = Array.from({ length: lineCount }, (_, i) => i + 1).join('<br>');
+}
+
+function syntaxHighlight() {
+    const text = editor.innerText;
+    // Basic highlighting logic
+    const highlighted = text
+        .replace(/(\/\*[\s\S]*?\*\/|\/\/.+)/g, '<span class="sh-comment">$1</span>') // comments
+        .replace(/(['"`])(.*?)\1/g, '<span class="sh-string">$1$2$1</span>') // strings
+        .replace(/\b(\d+(\.\d+)?)\b/g, '<span class="sh-number">$1</span>') // numbers
+        .replace(/\b(const|let|var|function|return|if|else|for|while|import|from|export|default|async|await|new|class|extends)\b/g, '<span class="sh-keyword">$1</span>') // keywords
+        .replace(/(\w+)\s*\(/g, '<span class="sh-function">$1</span>(') // functions
+        .replace(/([{}()[\],;])/g, '<span class="sh-bracket">$1</span>') // brackets
+        .replace(/([=+\-*/%<>!&|?:])/g, '<span class="sh-op">$1</span>'); // operators
+
+    // To prevent contenteditable issues, we need a more robust way
+    const selection = window.getSelection();
+    const range = selection && selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
+    const anchor = { node: range?.startContainer, offset: range?.startOffset };
+
+    editor.innerHTML = highlighted;
+    
+    // Restore cursor position (simplified)
+    if (range && anchor.node) {
+        try {
+            const newRange = document.createRange();
+            if (anchor.node.nodeType === Node.TEXT_NODE) {
+                newRange.setStart(anchor.node, Math.min(anchor.offset || 0, anchor.node.nodeValue?.length || 0));
+            } else {
+                 // Fallback for complex nodes
+                const textNodes = Array.from(editor.childNodes).filter(n => n.nodeType === Node.TEXT_NODE);
+                if (textNodes.length > 0) {
+                   newRange.setStart(textNodes[0], 0);
+                }
+            }
+            newRange.collapse(true);
+            selection?.removeAllRanges();
+            selection?.addRange(newRange);
+        } catch (e) {
+            console.warn("Could not restore cursor position.", e);
+        }
+    }
+}
+
+function setupInitialEditorContent() {
+    editor.innerText = `// Welcome to Nemodian 2244-1\n// The Quantum Fractal AI Editor\n\nfunction helloWorld() {\n  console.log("Ready to orchestrate greatness.");\n}\n\nhelloWorld();`;
+    updateLineNumbers();
+    syntaxHighlight();
+}
+
+function addLogEntry(sender: AgentName, receiver: AgentName, message: string) {
+    const entry = document.createElement('div');
+    entry.className = 'log-entry';
+    const senderAgent = agents.find(a => a.name === sender);
+    const receiverAgent = agents.find(a => a.name === receiver);
+    
+    entry.innerHTML = `
+        <span class="log-sender" style="color: ${senderAgent?.color || 'white'}">${sender}</span>
+        <span class="log-arrow">→</span>
+        <span class="log-receiver" style="color: ${receiverAgent?.color || 'white'}">${receiver}</span>
+        <span class="log-message">${message.substring(0, 100)}...</span>
+    `;
+    commLogPanel.appendChild(entry);
+    commLogPanel.scrollTop = commLogPanel.scrollHeight;
+}
+
+// --- AGENT & ORCHESTRATION UI ---
+
+function updateAgentState(name: AgentName, state: AgentState, content?: string, originHash?: string) {
+    const agent = agents.find(a => a.name === name);
+    if (!agent) return;
+
+    agent.state = state;
+    if (content) agent.content = content;
+    if (originHash) agent.originHash = originHash;
+
+    const card = agent.element;
+    if (!card) return;
+
+    const spinner = card.querySelector('.quantum-spinner') as HTMLElement;
+    const contentText = card.querySelector('.content-text') as HTMLElement;
+    const hashEl = card.querySelector('.agent-hash') as HTMLDivElement;
+
+    if (state === 'THINKING') {
+        spinner.style.display = 'inline-block';
+        card.classList.add('processing');
+        contentText.innerHTML = `<i>${content || 'Thinking...'}</i>`;
+    } else {
+        spinner.style.display = 'none';
+        card.classList.remove('processing');
+        contentText.innerHTML = content || agent.content;
+    }
+    
+    if (hashEl && agent.originHash) {
+        hashEl.textContent = `${agent.originHash.substring(0, 8)}...`;
+        hashEl.title = `Origin Hash: ${agent.originHash}`;
+    }
+}
+
+function renderAgentCard(agent: Agent): HTMLDivElement {
+    const card = document.createElement('div');
+    card.className = 'agent-card';
+    card.dataset.agentName = agent.name;
+    card.innerHTML = `
+        <div class="agent-header">
+            <div class="agent-title" style="color: ${agent.color};">${agent.name}</div>
+            <div class="agent-hash" title="Origin Hash">${agent.originHash ? `${agent.originHash.substring(0, 8)}...` : 'pending...'}</div>
+        </div>
+        <div class="agent-content">
+            <div class="quantum-spinner" style="display: none;"></div>
+            <span class="content-text">${agent.description}</span>
+        </div>
+    `;
+    return card;
 }
 
 function renderAgentCards() {
-    aiResponsePanel.innerHTML = '<button id="close-ai-panel">×</button>'; // Clear previous
-    for (const agentName in agents) {
-        const agent = agents[agentName as AgentName];
-        const card = document.createElement('div');
-        card.className = 'agent-card';
-        card.dataset.agentName = agent.name;
-        let innerHTML = `
-            <div class="agent-title" style="color: ${agent.color};">${agent.name}</div>
-            <div class="agent-content">
-                <div class="quantum-spinner" style="display: none;"></div>
-                <span class="agent-status-text">${agent.content}</span>
-            </div>
-        `;
-        
-        if (agent.name === 'Nexus') {
-            innerHTML += `
-                <div class="nexus-task-input-container">
-                    <input type="text" id="nexus-task-input" placeholder="Enter initial task for Nexus...">
-                    <button id="nexus-start-button">Start</button>
-                </div>
-            `;
-        }
-        card.innerHTML = innerHTML;
-
-        aiResponsePanel.appendChild(card);
+    const container = document.getElementById('agent-cards-container') || document.createElement('div');
+    container.id = 'agent-cards-container';
+    container.innerHTML = '';
+    
+    agents.forEach(agent => {
+        const card = renderAgentCard(agent);
         agent.element = card;
-    }
-
-    // Add event listener for the Nexus start button
-    const nexusStartButton = document.getElementById('nexus-start-button');
-    if (nexusStartButton) {
-        nexusStartButton.addEventListener('click', runMultiAgentConsensus);
-    }
-
-    (aiResponsePanel.querySelector('#close-ai-panel') as HTMLButtonElement)?.addEventListener('click', () => {
-        aiResponsePanel.style.display = 'none';
-        stopVisualization();
+        container.appendChild(card);
     });
-}
-
-function updateAgentCardUI(agentName: AgentName, state: AgentState, content: string) {
-    const agent = agents[agentName];
-    if (!agent || !agent.element) return;
     
-    agent.state = state;
-    agent.content = content;
+    aiPanel.appendChild(container);
+    updateAgentPositions();
+}
 
-    const spinner = agent.element.querySelector('.quantum-spinner') as HTMLDivElement;
-    const statusText = agent.element.querySelector('.agent-status-text') as HTMLSpanElement;
-
-    spinner.style.display = state === 'THINKING' || state === 'COMMUNICATING' ? 'inline-block' : 'none';
-    statusText.textContent = content;
-
-    if (state === 'THINKING' || state === 'COMMUNICATING') {
-        agent.element.classList.add('processing');
-    } else {
-        agent.element.classList.remove('processing');
+function renderConsensusPanel(genesisHash: string) {
+    let consensusPanel = document.getElementById('consensus-panel');
+    if (!consensusPanel) {
+        consensusPanel = document.createElement('div');
+        consensusPanel.id = 'consensus-panel';
+        aiPanel.prepend(consensusPanel);
     }
-}
-
-function getAgentCardCenter(agentName: AgentName): { x: number; y: number } | null {
-    const el = agents[agentName]?.element;
-    if (!el) return null;
-    const rect = el.getBoundingClientRect();
-    return {
-        x: rect.left + rect.width / 2,
-        y: rect.top + rect.height / 2,
-    };
-}
-
-function startVisualization() {
-    flowCanvas.style.display = 'block';
-    const resizeCanvas = () => {
-        flowCanvas.width = window.innerWidth;
-        flowCanvas.height = window.innerHeight;
-    };
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
-
-    if (animationFrameId) cancelAnimationFrame(animationFrameId);
-    animationLoop();
-}
-
-function stopVisualization() {
-    if (animationFrameId) {
-        cancelAnimationFrame(animationFrameId);
-        animationFrameId = null;
-    }
-    isSimulating = false;
-    flowCanvas.style.display = 'none';
-    communicationLinks = [];
-    particles = [];
-}
-
-function animationLoop() {
-    if (!isSimulating) {
-        stopVisualization();
-        return;
-    }
-
-    flowCtx.clearRect(0, 0, flowCanvas.width, flowCanvas.height);
-    drawConnections();
-    updateAndDrawParticles();
-
-    animationFrameId = requestAnimationFrame(animationLoop);
-}
-
-function drawConnections() {
-    communicationLinks.forEach(link => {
-        const fromPos = getAgentCardCenter(link.from);
-        const toPos = getAgentCardCenter(link.to);
-        if (fromPos && toPos) {
-            flowCtx.beginPath();
-            flowCtx.moveTo(fromPos.x, fromPos.y);
-            flowCtx.lineTo(toPos.x, toPos.y);
-            flowCtx.strokeStyle = `${agents[link.from].color}80`; // Add alpha
-            flowCtx.lineWidth = 1;
-            flowCtx.stroke();
-        }
-    });
-}
-
-function updateAndDrawParticles() {
-    particles.forEach((p, index) => {
-        p.x += p.vx;
-        p.y += p.vy;
-        p.life -= 1;
-
-        if (p.life <= 0) {
-            particles.splice(index, 1);
-            return;
-        }
-
-        flowCtx.beginPath();
-        flowCtx.arc(p.x, p.y, p.size, 0, Math.PI * 2, false);
-        flowCtx.fillStyle = p.color;
-        flowCtx.globalAlpha = p.life / p.initialLife;
-        flowCtx.fill();
-        flowCtx.globalAlpha = 1.0;
-    });
-}
-
-function createParticles(from: AgentName, to: AgentName) {
-    const fromPos = getAgentCardCenter(from);
-    const toPos = getAgentCardCenter(to);
-
-    if (!fromPos || !toPos) return;
-
-    for (let i = 0; i < PARTICLE_COUNT; i++) {
-        const angle = Math.atan2(toPos.y - fromPos.y, toPos.x - fromPos.x);
-        particles.push({
-            x: fromPos.x,
-            y: fromPos.y,
-            size: Math.random() * 1.5 + 1,
-            color: agents[from].color,
-            vx: Math.cos(angle) * PARTICLE_SPEED + (Math.random() - 0.5),
-            vy: Math.sin(angle) * PARTICLE_SPEED + (Math.random() - 0.5),
-            life: Math.random() * PARTICLE_LIFE,
-            initialLife: PARTICLE_LIFE,
-        });
-    }
-}
-
-async function setCommunicationLink(from: AgentName, to: AgentName, duration: number) {
-    communicationLinks = [{ from, to }];
-    const interval = setInterval(() => createParticles(from, to), 100);
+    consensusPanel.className = 'consensus-panel'; // Use ID for styling
     
-    updateAgentCardUI(from, 'COMMUNICATING', `Sending data to ${to}...`);
-    updateAgentCardUI(to, 'THINKING', `Receiving data from ${from}...`);
-
-    await sleep(duration);
-
-    clearInterval(interval);
-    communicationLinks = [];
-}
-
-async function simulationSequence(initialTask: string) {
-    clearCommLogs();
-    addCommLog('System', 'Nexus', `Orchestration initiated. Task: "${initialTask}"`);
-
-    const agentNames = Object.keys(agents) as AgentName[];
-    
-    // Nexus gets the specific task, others get a generic message
-    for (const name of agentNames) {
-        if (name === 'Nexus') {
-            updateAgentCardUI(name as AgentName, 'THINKING', `Task: ${initialTask}`);
-        } else {
-            updateAgentCardUI(name as AgentName, 'THINKING', 'Orchestration started...');
-        }
-    }
-    await sleep(1500);
-
-    for (const link of currentConfiguration.flow) {
-        if (agents[link.from] && agents[link.to]) {
-            await setCommunicationLink(link.from, link.to, 2000);
-            addCommLog(link.from, link.to, `Passing control and data context.`);
-        }
-    }
-    
-    const lastAgentInFlow = currentConfiguration.flow[currentConfiguration.flow.length - 1]?.to;
-    if (lastAgentInFlow && agents[lastAgentInFlow]) {
-        const lastAgent = agents[lastAgentInFlow];
-        updateAgentCardUI(lastAgentInFlow, 'THINKING', `Synthesizing result with persona: "${lastAgent.persona}"`);
-    }
-    await sleep(1500);
-    
-    for (const name of agentNames) {
-        updateAgentCardUI(name as AgentName, 'DONE', 'Consensus reached.');
-    }
-    addCommLog('System', 'All', `Consensus reached. Orchestration complete.`);
-
-}
-
-function showAgentPanel() {
-    if (isSimulating) return;
-    clearCommLogs();
-    initializeAgents();
-    renderAgentCards();
-    aiResponsePanel.style.display = 'block';
-}
-
-async function runMultiAgentConsensus() {
-    if (isSimulating) return;
-
-    const nexusTaskInput = document.getElementById('nexus-task-input') as HTMLInputElement;
-    const nexusStartButton = document.getElementById('nexus-start-button') as HTMLButtonElement;
-    const initialTask = nexusTaskInput?.value.trim();
-
-    if (!initialTask) {
-        alert('Please provide a task for Nexus to begin.');
-        return;
-    }
-    
-    isSimulating = true;
-    if (nexusTaskInput) nexusTaskInput.disabled = true;
-    if (nexusStartButton) nexusStartButton.disabled = true;
-
-    await sleep(50); // Ensure UI is updated before getting positions
-    
-    startVisualization();
-    await simulationSequence(initialTask);
-    
-    isSimulating = false; // The animation loop will see this and stop itself
-
-    // Re-enable for another run
-    if (nexusTaskInput) nexusTaskInput.disabled = false;
-    if (nexusStartButton) nexusStartButton.disabled = false;
-}
-
-// --- COMMUNICATION LOG ---
-function addCommLog(from: AgentName, to: AgentName, message: string) {
-    if (!commLogPanel) return;
-
-    const fromAgent = agents[from];
-    const toAgent = agents[to];
-
-    const entry = document.createElement('div');
-    entry.className = 'log-entry';
-
-    const fromColor = fromAgent ? fromAgent.color : 'var(--muted-text)';
-    const toColor = toAgent ? toAgent.color : 'var(--muted-text)';
-
-    entry.innerHTML = `
-        <div>
-            <span class="log-sender" style="color: ${fromColor};">${from}</span>
-            <span class="log-arrow">→</span>
-            <span class="log-receiver" style="color: ${toColor};">${to}</span>
+    consensusPanel.innerHTML = `
+        <div class="consensus-header">
+            <span>Collaborative Thinking Pool</span>
+            <span title="Genesis Hash">${genesisHash.substring(0, 12)}...</span>
         </div>
-        <span class="log-message">${message}</span>
+        <div id="consensus-content"></div>
+    `;
+}
+
+function updateConsensusPanel(thinkingPool: Record<AgentName, string[]>) {
+    const contentDiv = document.getElementById('consensus-content');
+    if (!contentDiv) return;
+
+    let html = '';
+    for (const agentName in thinkingPool) {
+        if (thinkingPool[agentName].length > 0) {
+            const agent = agents.find(a => a.name === agentName);
+            html += `<div class="consensus-agent-block">`;
+            html += `<strong style="color: ${agent?.color || 'white'}">${agentName} contributions:</strong><ul>`;
+            thinkingPool[agentName].forEach((thought, index) => {
+                const thoughtSnippet = thought.replace(/</g, "&lt;").replace(/>/g, "&gt;");
+                html += `<li>Round ${index + 1}: ${thoughtSnippet.substring(0, 120)}...</li>`;
+            });
+            html += `</ul></div>`;
+        }
+    }
+    contentDiv.innerHTML = html;
+    contentDiv.parentElement!.scrollTop = contentDiv.parentElement!.scrollHeight;
+}
+
+
+function showFinalResult(content: string, title: string) {
+    const finalResultContainer = document.createElement('div');
+    finalResultContainer.className = 'final-result-container consensus-panel'; // Reuse styles
+    finalResultContainer.style.marginTop = '20px';
+    finalResultContainer.style.borderColor = 'var(--accent)';
+
+    const pre = document.createElement('pre');
+    const code = document.createElement('code');
+    code.textContent = content;
+    pre.appendChild(code);
+
+    finalResultContainer.innerHTML = `<div class="consensus-header" style="color: var(--accent);">${title}</div>`;
+    finalResultContainer.appendChild(pre);
+
+    const buttons = document.createElement('div');
+    buttons.className = 'action-buttons';
+    buttons.innerHTML = `
+        <button id="btn-copy-result">Copy</button>
+        <button id="btn-insert-result">Insert into Editor</button>
+    `;
+    finalResultContainer.appendChild(buttons);
+
+    aiPanel.appendChild(finalResultContainer);
+    aiPanel.scrollTop = aiPanel.scrollHeight;
+
+    document.getElementById('btn-copy-result')?.addEventListener('click', () => {
+        navigator.clipboard.writeText(content);
+    });
+
+    document.getElementById('btn-insert-result')?.addEventListener('click', () => {
+        editor.innerText = content;
+        updateLineNumbers();
+        syntaxHighlight();
+    });
+}
+
+
+// --- CORE ORCHESTRATION LOGIC ---
+
+async function streamContentToAgent(agentName: string, prompt: string, isFinalAgent: boolean = false): Promise<string> {
+    try {
+        const response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: [{ parts: [{ text: prompt }] }],
+        });
+        
+        const fullContent = response.text;
+        updateAgentState(agentName, 'DONE', fullContent);
+        
+        if (isFinalAgent) {
+            showFinalResult(fullContent, `${agentName} Synthesis`);
+        }
+        
+        return fullContent;
+    } catch (error) {
+        console.error(`Error with agent ${agentName}:`, error);
+        const errorMessage = `Error: Could not get response. Check console.`;
+        updateAgentState(agentName, 'ERROR', errorMessage);
+        return errorMessage;
+    }
+}
+
+async function processAgentTurn(
+    agent: Agent,
+    userPrompt: string,
+    thinkingPool: Record<AgentName, string[]>,
+    genesisHash: string,
+    round: number
+): Promise<void> {
+    updateAgentState(agent.name, 'THINKING', `Round ${round}: Analyzing...`);
+
+    const collaborativeContext = JSON.stringify(thinkingPool, null, 2);
+    const agentPrompt = `
+        **Genesis Hash (Task ID):** ${genesisHash}
+        **Your Origin Hash (Your ID):** ${agent.originHash}
+        **Your Persona:** ${agent.persona}
+        **Overall User Prompt:** "${userPrompt}"
+        
+        **Current Collaborative Thinking Pool (Round ${round}):**
+        ${collaborativeContext}
+
+        **Your Task:** Based on your persona, the user prompt, and the team's current thoughts, provide your next piece of analysis or contribution. Your thinking should be fractal, multi-layered, and build upon the existing ideas. Adhere to the principles of genesis-rehashed collaborative reasoning. Your output will be added to the pool for the next round. Focus on providing a concise, potent thought-fragment.
     `;
 
-    commLogPanel.appendChild(entry);
-    commLogPanel.scrollTop = commLogPanel.scrollHeight; // Auto-scroll to bottom
+    const result = await streamContentToAgent(agent.name, agentPrompt, false);
+    
+    thinkingPool[agent.name].push(result);
+    const newHash = await rehash(agent.originHash!, result);
+    
+    updateAgentState(agent.name, 'DONE', result, newHash);
+    updateConsensusPanel(thinkingPool);
 }
 
-function clearCommLogs() {
-    if (commLogPanel) {
-        commLogPanel.innerHTML = '';
+async function processNexusSynthesis(
+    nexusAgent: Agent, 
+    userPrompt: string, 
+    thinkingPool: Record<AgentName, string[]>
+) {
+    updateAgentState(nexusAgent.name, 'THINKING', 'Synthesizing final answer...');
+
+    const collaborativeContext = JSON.stringify(thinkingPool, null, 2);
+    const synthesisPrompt = `
+        **Your Persona:** ${nexusAgent.persona}
+        **Overall User Prompt:** "${userPrompt}"
+
+        **Final Collaborative Thinking Pool:**
+        ${collaborativeContext}
+
+        **Your Final Task:** You are the orchestrator, Nexus. Your purpose is to synthesize all contributions from the thinking pool into a single, coherent, and complete final answer that directly addresses the user's prompt. Assemble the origin-rehashed logic into a final solution. Prioritize the most novel and insightful contributions to form the core of your response. If the prompt requires code, provide ONLY the final, complete, and clean code block. If it's a question, provide a definitive answer.
+    `;
+    
+    await streamContentToAgent(nexusAgent.name, synthesisPrompt, true);
+    updateAgentState(nexusAgent.name, 'DONE', 'Synthesis complete.');
+}
+
+
+async function runOrchestration(prompt: string) {
+    if (!prompt) return;
+    btnOrchestrate.disabled = true;
+
+    // --- PHASE 1: INITIALIZATION ---
+    aiPanel.style.display = 'block';
+    aiPanel.innerHTML = `<button id="close-ai-panel">×</button>`;
+    document.getElementById('close-ai-panel')?.addEventListener('click', () => {
+        aiPanel.style.display = 'none';
+    });
+
+    const genesisHash = await generateGenesisHash();
+    renderConsensusPanel(genesisHash);
+    
+    const agentInitializationPromises = currentConfig.agents.map(async (agentDef) => {
+        const originHash = await generateGenesisHash(genesisHash, agentDef.name);
+        const agent: Agent = {
+            ...agentDef,
+            state: 'IDLE',
+            content: agentDef.description,
+            element: null,
+            genesisHash,
+            originHash,
+        };
+        return agent;
+    });
+    agents = await Promise.all(agentInitializationPromises);
+    renderAgentCards();
+    
+    const thinkingPool: Record<AgentName, string[]> = {};
+    agents.forEach(agent => { thinkingPool[agent.name] = []; });
+
+    // --- PHASE 2: PARALLEL REASONING ---
+    for (let round = 1; round <= ORCHESTRATION_ROUNDS; round++) {
+        const roundPromises = agents.map(agent => 
+            processAgentTurn(agent, prompt, thinkingPool, genesisHash, round)
+        );
+        await Promise.all(roundPromises);
     }
+    
+    // --- PHASE 3: FINAL SYNTHESIS ---
+    const nexusAgent = agents.find(a => a.name === 'Nexus');
+    if (nexusAgent) {
+        await processNexusSynthesis(nexusAgent, prompt, thinkingPool);
+    } else {
+        console.error("Nexus agent not found for final synthesis.");
+        showFinalResult(JSON.stringify(thinkingPool, null, 2), "Synthesis Failed: Nexus not found.");
+    }
+
+    btnOrchestrate.disabled = false;
 }
 
+// --- VISUALIZATION ---
+function updateAgentPositions() {
+    const panelRect = aiPanel.getBoundingClientRect();
+    if (panelRect.width === 0) return; // Panel is hidden
 
-// --- CONFIGURATION MANAGEMENT ---
+    const numAgents = agents.length;
+    const radius = Math.min(panelRect.width, panelRect.height) * 0.35;
+    const centerX = panelRect.left + panelRect.width / 2;
+    const centerY = panelRect.top + panelRect.height / 2;
+
+    agents.forEach((agent, i) => {
+        const angle = (i / numAgents) * 2 * Math.PI;
+        agentPositions[agent.name] = {
+            x: centerX + radius * Math.cos(angle),
+            y: centerY + radius * Math.sin(angle),
+        };
+    });
+}
+
+// --- CONFIG & PERSONA MANAGEMENT ---
+function loadConfigs() {
+    const savedConfigs = localStorage.getItem('agentConfigs');
+    let configs = DEFAULT_CONFIGS;
+    if (savedConfigs) {
+        try {
+            configs = { ...DEFAULT_CONFIGS, ...JSON.parse(savedConfigs) };
+        } catch (e) {
+            console.error("Failed to parse saved configs:", e);
+        }
+    }
+    configSelector.innerHTML = '';
+    Object.keys(configs).forEach(name => {
+        const option = new Option(name, name);
+        configSelector.add(option);
+    });
+    return configs;
+}
+
+function applyConfig(config: AgentConfiguration) {
+    currentConfig = config;
+    configNameInput.value = config.name;
+    // We don't re-render agents immediately, but on orchestration start
+    // Update persona editor with agents from the new config
+    renderPersonaEditor();
+    autoSaveCurrentConfig();
+}
+
+function saveConfig() {
+    const savedConfigs = JSON.parse(localStorage.getItem('agentConfigs') || '{}');
+    const newConfigName = configNameInput.value.trim();
+    if (!newConfigName) {
+        alert("Please enter a name for the configuration.");
+        return;
+    }
+    // Deep copy currentConfig and update personas from editor
+    const configToSave: AgentConfiguration = JSON.parse(JSON.stringify(currentConfig));
+    configToSave.name = newConfigName;
+    configToSave.agents.forEach(agentDef => {
+        const personaInput = personaEditor.querySelector(`[data-agent-name="${agentDef.name}"]`) as HTMLTextAreaElement;
+        if (personaInput) {
+            agentDef.persona = personaInput.value;
+        }
+    });
+
+    savedConfigs[newConfigName] = configToSave;
+    localStorage.setItem('agentConfigs', JSON.stringify(savedConfigs));
+    loadConfigs();
+    configSelector.value = newConfigName;
+    alert(`Configuration '${newConfigName}' saved.`);
+}
+
 function renderPersonaEditor() {
-    if (!personaEditorContainer) return;
-
-    personaEditorContainer.innerHTML = ''; // Clear existing
-    if (!currentConfiguration || !currentConfiguration.agents) return;
-
-    currentConfiguration.agents.forEach((agentDef, index) => {
+    personaEditor.innerHTML = '';
+    currentConfig.agents.forEach(agent => {
         const item = document.createElement('div');
         item.className = 'persona-item';
-
-        const label = document.createElement('label');
-        label.setAttribute('for', `persona-input-${agentDef.name}`);
-        label.textContent = `${agentDef.name}:`;
-        label.style.color = agentDef.color;
-
-        const input = document.createElement('input');
-        input.type = 'text';
-        input.className = 'persona-input';
-        input.id = `persona-input-${agentDef.name}`;
-        input.value = agentDef.persona;
-
-        input.addEventListener('input', (e) => {
-            const target = e.target as HTMLInputElement;
-            // Update the persona in the current configuration state directly
-            currentConfiguration.agents[index].persona = target.value;
-        });
-
-        item.appendChild(label);
-        item.appendChild(input);
-        personaEditorContainer.appendChild(item);
+        item.innerHTML = `
+            <label style="color: ${agent.color}">${agent.name}</label>
+            <textarea class="persona-input" data-agent-name="${agent.name}" rows="3">${agent.persona}</textarea>
+        `;
+        personaEditor.appendChild(item);
     });
 }
 
-function populateConfigSelector() {
-    configSelector.innerHTML = '';
-    for (const name in savedConfigurations) {
-        const option = document.createElement('option');
-        option.value = name;
-        option.textContent = name;
-        if (name === currentConfiguration.name) {
-            option.selected = true;
-        }
-        configSelector.appendChild(option);
+function loadPersonaSets() {
+    const savedSets = localStorage.getItem('personaSets');
+    let sets = DEFAULT_PERSONA_SETS;
+    if (savedSets) {
+        try {
+            sets = { ...DEFAULT_PERSONA_SETS, ...JSON.parse(savedSets) };
+        } catch (e) { console.error("Failed to parse saved persona sets:", e); }
     }
-}
-
-function saveConfigurationsToStorage() {
-    localStorage.setItem('agentConfigs', JSON.stringify(savedConfigurations));
-}
-
-function loadConfigurationsFromStorage() {
-    const storedConfigs = localStorage.getItem('agentConfigs');
-    if (storedConfigs) {
-        savedConfigurations = JSON.parse(storedConfigs);
-    } else {
-        // First time load, use defaults
-        savedConfigurations = { ...DEFAULT_CONFIGS };
-    }
-    // Ensure default configs are always there if they were deleted somehow
-    for (const key in DEFAULT_CONFIGS) {
-        if (!savedConfigurations[key]) {
-            savedConfigurations[key] = DEFAULT_CONFIGS[key];
-        }
-    }
-}
-
-function handleSaveConfig() {
-    const name = configNameInput.value.trim();
-    if (!name) {
-        alert('Please enter a name for the configuration.');
-        return;
-    }
-    if (savedConfigurations[name]) {
-        if (!confirm(`Configuration "${name}" already exists. Overwrite?`)) {
-            return;
-        }
-    }
-    // The currentConfiguration object has been updated live by the persona inputs
-    savedConfigurations[name] = {
-        ...currentConfiguration,
-        name: name, // Ensure the name inside the object matches
-    };
-    saveConfigurationsToStorage();
-    
-    // After saving, the saved config becomes the current one.
-    currentConfiguration.name = name; 
-    
-    populateConfigSelector();
-    configSelector.value = name;
-    configNameInput.value = name; // Populate the input with the saved name for clarity
-    alert(`Configuration "${name}" saved!`);
-}
-
-function handleLoadConfig() {
-    const selectedName = configSelector.value;
-    if (savedConfigurations[selectedName]) {
-        // Use deep copy to prevent live edits from modifying the saved state before explicit save
-        currentConfiguration = JSON.parse(JSON.stringify(savedConfigurations[selectedName]));
-        renderPersonaEditor(); // Render the editor for the newly loaded config
-        configNameInput.value = selectedName; // Also update the save input
-        alert(`Configuration "${selectedName}" loaded. The next orchestration will use this setup.`);
-        populateConfigSelector(); // re-render to show selection
-        clearCommLogs();
-    } else {
-        alert('Error: Could not load configuration.');
-    }
-}
-
-// --- PERSONA SET MANAGEMENT ---
-
-function populatePersonaSetSelector() {
-    if (!personaSetSelector) return;
-    personaSetSelector.innerHTML = '<option value="">Select a set...</option>';
-    for (const name in savedPersonaSets) {
-        const option = document.createElement('option');
-        option.value = name;
-        option.textContent = name;
-        personaSetSelector.appendChild(option);
-    }
-}
-
-function savePersonaSetsToStorage() {
-    localStorage.setItem('agentPersonaSets', JSON.stringify(savedPersonaSets));
-}
-
-function loadPersonaSetsFromStorage() {
-    const storedSets = localStorage.getItem('agentPersonaSets');
-    if (storedSets) {
-        savedPersonaSets = JSON.parse(storedSets);
-    } else {
-        savedPersonaSets = {};
-    }
-}
-
-function handleSavePersonaSet() {
-    const name = personaSetNameInput.value.trim();
-    if (!name) {
-        alert('Please enter a name for the persona set.');
-        return;
-    }
-    if (savedPersonaSets[name]) {
-        if (!confirm(`Persona set "${name}" already exists. Overwrite?`)) {
-            return;
-        }
-    }
-    
-    const currentPersonas: Record<AgentName, string> = {};
-    currentConfiguration.agents.forEach(agent => {
-        currentPersonas[agent.name] = agent.persona;
+    personaSetSelector.innerHTML = '<option value="">--Select a Set--</option>';
+    Object.keys(sets).forEach(name => {
+        const option = new Option(name, name);
+        personaSetSelector.add(option);
     });
-
-    savedPersonaSets[name] = {
-        name: name,
-        personas: currentPersonas,
-    };
-
-    savePersonaSetsToStorage();
-    populatePersonaSetSelector();
-    personaSetSelector.value = name;
-    alert(`Persona set "${name}" saved!`);
+    return sets;
 }
 
-function handleLoadPersonaSet() {
-    const selectedName = personaSetSelector.value;
-    if (!selectedName || !savedPersonaSets[selectedName]) {
-        if (selectedName) alert('Error: Could not load persona set.');
+function applyPersonaSet(set: PersonaSet) {
+    let appliedCount = 0;
+    currentConfig.agents.forEach(agentDef => {
+        if (set.personas[agentDef.name]) {
+            agentDef.persona = set.personas[agentDef.name];
+            appliedCount++;
+        }
+    });
+    renderPersonaEditor(); // Refresh editor to show new personas
+    autoSaveCurrentConfig(); // Auto-save after applying a new set
+    showStatusMessage(`Applied ${appliedCount} personas from "${set.name}".`, false);
+}
+
+function savePersonaSet() {
+    const sets = loadPersonaSets();
+    const newSetName = personaSetNameInput.value.trim();
+    if (!newSetName) {
+        showStatusMessage("Please enter a name for the persona set.", true);
         return;
     }
-
-    const personaSet = savedPersonaSets[selectedName];
-
-    currentConfiguration.agents.forEach((agent, index) => {
-        if (personaSet.personas[agent.name] !== undefined) {
-            currentConfiguration.agents[index].persona = personaSet.personas[agent.name];
+    const newSet: PersonaSet = { name: newSetName, personas: {} };
+    let count = 0;
+    personaEditor.querySelectorAll('.persona-input').forEach(el => {
+        const input = el as HTMLTextAreaElement;
+        const agentName = input.dataset.agentName;
+        if (agentName && input.value) {
+            newSet.personas[agentName] = input.value;
+            count++;
         }
     });
 
-    renderPersonaEditor();
-    alert(`Applied personas from "${selectedName}" to the current configuration.`);
+    if (count === 0) {
+        showStatusMessage("No personas to save.", true);
+        return;
+    }
+
+    sets[newSetName] = newSet;
+    localStorage.setItem('personaSets', JSON.stringify(sets));
+    loadPersonaSets();
+    personaSetSelector.value = newSetName;
+    showStatusMessage(`Persona set "${newSetName}" saved with ${count} personas.`, false);
 }
+
+function showStatusMessage(message: string, isError: boolean) {
+    personaSetStatus.textContent = message;
+    personaSetStatus.className = `status-message visible ${isError ? 'error' : ''}`;
+    setTimeout(() => {
+        personaSetStatus.classList.remove('visible');
+    }, 3000);
+}
+
+function autoSaveCurrentConfig() {
+    if (currentConfig) {
+        localStorage.setItem('autoSavedCurrentConfig', JSON.stringify(currentConfig));
+    }
+}
+
 
 // --- INITIALIZATION ---
-document.addEventListener('DOMContentLoaded', () => {
-    // DOM Element Query Selectors
-    editor = document.getElementById('editor') as HTMLDivElement;
-    lineNumbers = document.getElementById('line-numbers') as HTMLDivElement;
-    orchestrateButton = document.getElementById('btn-orchestrate') as HTMLButtonElement;
-    aiResponsePanel = document.getElementById('ai-response-panel') as HTMLDivElement;
-    closeAiPanelButton = document.getElementById('close-ai-panel') as HTMLButtonElement;
-    leftToggleButton = document.getElementById('left-toggle') as HTMLButtonElement;
-    editorStage = document.getElementById('editor-stage') as HTMLDivElement;
-    flowCanvas = document.getElementById('agent-flow-canvas') as HTMLCanvasElement;
-    flowCtx = flowCanvas.getContext('2d')!;
-    configSelector = document.getElementById('config-selector') as HTMLSelectElement;
-    loadConfigButton = document.getElementById('btn-load-config') as HTMLButtonElement;
-    saveConfigButton = document.getElementById('btn-save-config') as HTMLButtonElement;
-    configNameInput = document.getElementById('config-name-input') as HTMLInputElement;
-    personaEditorContainer = document.getElementById('persona-editor') as HTMLDivElement;
-    personaSetSelector = document.getElementById('persona-set-selector') as HTMLSelectElement;
-    loadPersonaSetButton = document.getElementById('btn-load-persona-set') as HTMLButtonElement;
-    savePersonaSetButton = document.getElementById('btn-save-persona-set') as HTMLButtonElement;
-    personaSetNameInput = document.getElementById('persona-set-name-input') as HTMLInputElement;
-    commLogPanel = document.getElementById('comm-log-panel') as HTMLDivElement;
-    clearLogButton = document.getElementById('btn-clear-log') as HTMLButtonElement;
+function main() {
+    setupInitialEditorContent();
+    const allConfigs = loadConfigs();
+    const allPersonaSets = loadPersonaSets();
 
-    // Event Listeners
-    editor.addEventListener('input', updateLineNumbers);
-    orchestrateButton.addEventListener('click', showAgentPanel);
-    leftToggleButton.addEventListener('click', () => editorStage.classList.toggle('left-panel-open'));
-    saveConfigButton.addEventListener('click', handleSaveConfig);
-    loadConfigButton.addEventListener('click', handleLoadConfig);
-    savePersonaSetButton.addEventListener('click', handleSavePersonaSet);
-    loadPersonaSetButton.addEventListener('click', handleLoadPersonaSet);
-    clearLogButton.addEventListener('click', clearCommLogs);
+    const autoSavedConfigRaw = localStorage.getItem('autoSavedCurrentConfig');
+    let initialConfig = allConfigs[configSelector.value]; // Default
+    if (autoSavedConfigRaw) {
+        try {
+            const autoSavedConfig = JSON.parse(autoSavedConfigRaw) as AgentConfiguration;
+            initialConfig = autoSavedConfig;
+            if (allConfigs[autoSavedConfig.name]) {
+                configSelector.value = autoSavedConfig.name;
+            }
+        } catch (e) {
+            console.error("Failed to parse auto-saved config, using default.", e);
+        }
+    }
+    applyConfig(initialConfig);
 
+    const debouncedSyntaxHighlight = debounce(syntaxHighlight, 250);
 
-    // Initial Load
-    loadConfigurationsFromStorage();
-    loadPersonaSetsFromStorage();
-    currentConfiguration = JSON.parse(JSON.stringify(savedConfigurations["Default Orchestration"]));
+    editor.addEventListener('input', () => {
+        updateLineNumbers();
+        debouncedSyntaxHighlight();
+    });
+
+    personaEditor.addEventListener('input', (event) => {
+        const target = event.target as HTMLElement;
+        if (target && target.classList.contains('persona-input')) {
+            const input = target as HTMLTextAreaElement;
+            const agentName = input.dataset.agentName;
+            const agentToUpdate = currentConfig.agents.find(a => a.name === agentName);
+
+            if (agentToUpdate) {
+                agentToUpdate.persona = input.value;
+                autoSaveCurrentConfig();
+            }
+        }
+    });
+
+    btnOrchestrate.addEventListener('click', () => {
+        runOrchestration(promptInput.value || editor.innerText);
+    });
+    promptInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            runOrchestration(promptInput.value);
+        }
+    });
+
+    closeAiPanelBtn.addEventListener('click', () => {
+        aiPanel.style.display = 'none';
+    });
     
-    populateConfigSelector();
-    populatePersonaSetSelector();
-    renderPersonaEditor();
-    updateLineNumbers();
-});
+    leftToggle.addEventListener('click', () => {
+        editorStage.classList.toggle('left-panel-open');
+    });
+
+    btnLoadConfig.addEventListener('click', () => {
+        const selectedConfig = allConfigs[configSelector.value];
+        if (selectedConfig) {
+            applyConfig(selectedConfig);
+        }
+    });
+    btnSaveConfig.addEventListener('click', saveConfig);
+
+    btnClearLog.addEventListener('click', () => commLogPanel.innerHTML = '');
+
+    btnLoadPersonaSet.addEventListener('click', () => {
+        const selectedSet = allPersonaSets[personaSetSelector.value];
+        if (selectedSet) {
+            applyPersonaSet(selectedSet);
+        }
+    });
+    btnSavePersonaSet.addEventListener('click', savePersonaSet);
+
+    try {
+        ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
+    } catch (e) {
+        console.error("Failed to initialize GoogleGenAI", e);
+        alert("Could not initialize AI. Is your API key set up correctly in the environment?");
+    }
+}
+
+main();
