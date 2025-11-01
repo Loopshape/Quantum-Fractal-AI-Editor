@@ -36,6 +36,8 @@
             --agent-relay: #FFD54F;
             --agent-sentinel: #CF6679;
             --agent-echo: #4ac94a;
+            --agent-chrono: #FFB300;
+            --agent-guardian: #1E88E5;
             --quantum-glow: rgba(187, 134, 252, 0.6);
         }
 
@@ -191,6 +193,83 @@
             overflow-y: auto;
             width: 240px;
         }
+        
+        #left-panel input[type="text"], #left-panel select {
+            width: 100%;
+            padding: 6px;
+            background: var(--status-bg);
+            border: 1px solid var(--muted-text);
+            color: #f0f0e0;
+            font-family: inherit;
+            border-radius: 3px;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+        
+        #left-panel input[type="text"]:focus, #left-panel select:focus {
+          outline: none;
+          border-color: var(--accent);
+        }
+
+        #left-panel select {
+            padding: 5px;
+        }
+        
+        #left-panel label {
+            font-size: 12px;
+            color: var(--muted-text);
+        }
+
+        #left-panel hr {
+            border: none;
+            border-top: 1px solid #5a5e50;
+            margin: 10px 0;
+        }
+        
+        .left-panel-header {
+            margin-top: 10px;
+            margin-bottom: 5px;
+            color: var(--accent);
+            border-bottom: 1px solid var(--muted-text);
+            padding-bottom: 5px;
+            font-size: 1em;
+        }
+
+        #persona-editor {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .persona-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .persona-item label {
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .persona-input {
+            width: 100%;
+            padding: 6px;
+            background: var(--status-bg);
+            border: 1px solid var(--muted-text);
+            color: #f0f0e0;
+            font-family: inherit;
+            font-size: 11px;
+            border-radius: 3px;
+            box-sizing: border-box;
+            transition: border-color 0.2s;
+        }
+
+        .persona-input:focus {
+            outline: none;
+            border-color: var(--accent);
+        }
+
 
         /* ----- Modern Editor Container ----- */
         .editor-container {
@@ -291,10 +370,37 @@
             transform: translateY(-2px);
         }
 
+        .agent-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 4px;
+        }
+
         .agent-title {
             font-weight: bold;
             font-size: 14px;
-            margin-bottom: 4px;
+        }
+        
+        .agent-share-btn {
+            background: transparent;
+            border: 1px solid var(--muted);
+            color: var(--muted);
+            padding: 2px 6px;
+            cursor: pointer;
+            font-size: 11px;
+            transition: all .2s;
+            border-radius: 3px;
+            line-height: 1;
+            width: 60px;
+            text-align: center;
+            flex-shrink: 0;
+        }
+
+        .agent-share-btn:hover {
+            background: var(--hover-blue);
+            border-color: var(--hover-blue);
+            color: white;
         }
 
         .agent-content {
@@ -366,15 +472,15 @@
         .sh-unknown { color: #f87171; }
         
         /* Quantum Scrollbar styling */
-        .editor-scroll-pane::-webkit-scrollbar, #ai-response-panel::-webkit-scrollbar {
+        .editor-scroll-pane::-webkit-scrollbar, #ai-response-panel::-webkit-scrollbar, .comm-log-panel::-webkit-scrollbar, .consensus-panel::-webkit-scrollbar, #left-panel::-webkit-scrollbar {
             width: 12px;
         }
 
-        .editor-scroll-pane::-webkit-scrollbar-track, #ai-response-panel::-webkit-scrollbar-track {
+        .editor-scroll-pane::-webkit-scrollbar-track, #ai-response-panel::-webkit-scrollbar-track, .comm-log-panel::-webkit-scrollbar-track, .consensus-panel::-webkit-scrollbar-track, #left-panel::-webkit-scrollbar-track {
             background: var(--panel);
         }
 
-        .editor-scroll-pane::-webkit-scrollbar-thumb, #ai-response-panel::-webkit-scrollbar-thumb {
+        .editor-scroll-pane::-webkit-scrollbar-thumb, #ai-response-panel::-webkit-scrollbar-thumb, .comm-log-panel::-webkit-scrollbar-thumb, .consensus-panel::-webkit-scrollbar-thumb, #left-panel::-webkit-scrollbar-thumb {
             background-color: var(--muted-text);
             border-radius: 6px;
             border: 3px solid var(--panel);
@@ -453,6 +559,17 @@
             pointer-events: none;
             z-index: 5;
         }
+        
+        #agent-flow-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 999;
+            display: none;
+        }
 
         .fractal-node {
             position: absolute;
@@ -467,6 +584,16 @@
             0% { transform: scale(1); opacity: 0.3; }
             100% { transform: scale(1.5); opacity: 0.8; }
         }
+
+        /* Agent Card Colors */
+        .agent-card[data-agent-name="Nexus"] { border-left-color: var(--agent-nexus); }
+        .agent-card[data-agent-name="Cognito"] { border-left-color: var(--agent-cognito); }
+        .agent-card[data-agent-name="Relay"] { border-left-color: var(--agent-relay); }
+        .agent-card[data-agent-name="Sentinel"] { border-left-color: var(--agent-sentinel); }
+        .agent-card[data-agent-name="Echo"] { border-left-color: var(--agent-echo); }
+        .agent-card[data-agent-name="Chrono"] { border-left-color: var(--agent-chrono); }
+        .agent-card[data-agent-name="Guardian"] { border-left-color: var(--agent-guardian); }
+
 
         /* New Consensus Panel Styles */
         .consensus-panel {
@@ -487,694 +614,66 @@
             justify-content: space-between;
             align-items: center;
         }
-
-        .candidate-item {
-            background: rgba(255,255,255,0.05);
-            border-radius: 4px;
-            padding: 8px;
-            margin-bottom: 8px;
-            border-left: 3px solid var(--agent-cognito);
-        }
-        
-        .selected-candidate {
-            border-left-color: var(--accent);
-            background: rgba(74, 201, 74, 0.1);
-        }
-        
-        .candidate-meta {
-            font-size: 10px;
-            color: var(--muted-text);
-            display: flex;
-            justify-content: space-between;
-            margin-bottom: 4px;
-        }
-        
-        .candidate-content {
-            font-size: 11px;
-            font-family: 'Fira Code', monospace;
-            white-space: pre;
-            max-height: 80px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-        }
-
-        .entropy-badge {
-            background: var(--agent-nexus);
-            color: black;
-            padding: 2px 6px;
-            border-radius: 10px;
-            font-size: 10px;
-            font-weight: bold;
-        }
-
     </style>
-    <script type="importmap">
-    {
-      "imports": {
-        "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0"
-      }
-    }
-    </script>
 </head>
 <body>
-<header>
-    <div class="left">
-        <button id="left-toggle" class="small">☰</button>
-        <div style="font-weight:800;" class="quantum-pulse">Nemodian 2244-1 :: Quantum Fractal AI</div>
+    <header>
+        <div class="left">
+            <button id="left-toggle">☰</button>
+            <div class="title quantum-pulse">Nemodian 2244-1</div>
+        </div>
+        <div class="right">
+            <!-- More header buttons can go here -->
+        </div>
+    </header>
+
+    <div id="status-bar">
+        <div>/path/to/current/file.ts</div>
+        <div>Ln 1, Col 1</div>
     </div>
-    <div class="right">
-        <button id="render-html" class="small warn">Render HTML</button>
+    
+    <main id="editor-stage" class="left-panel-open">
+        <div id="left-panel">
+            <label for="config-selector">Configuration:</label>
+            <select id="config-selector"></select>
+            <button id="btn-load-config">Load</button>
+            <hr>
+            <label for="config-name-input">Save Configuration As:</label>
+            <input type="text" id="config-name-input" placeholder="New Config Name">
+            <button id="btn-save-config">Save</button>
+            <hr>
+            <h4 class="left-panel-header">Persona Sets</h4>
+            <label for="persona-set-selector">Load Persona Set:</label>
+            <select id="persona-set-selector"></select>
+            <button id="btn-load-persona-set" class="small">Load Personas</button>
+            <label for="persona-set-name-input">Save Personas As:</label>
+            <input type="text" id="persona-set-name-input" placeholder="New Persona Set Name">
+            <button id="btn-save-persona-set" class="small">Save Personas</button>
+            <hr>
+            <h4 class="left-panel-header">Agent Personas</h4>
+            <div id="persona-editor"></div>
+        </div>
+        <div class="editor-container">
+            <div class="editor-scroll-pane">
+                <div id="line-numbers" class="line-numbers">1</div>
+                <div id="editor" class="editor-content" contenteditable="true" spellcheck="false"></div>
+            </div>
+            <canvas id="agent-flow-canvas"></canvas>
+        </div>
+    </main>
+    
+    <footer>
+        <input id="prompt-input" type="text" placeholder="Enter your prompt here..." />
+        <div class="footer-options">
+            <button id="btn-orchestrate" class="success">Orchestrate</button>
+        </div>
+    </footer>
+
+    <div id="ai-response-panel">
+        <button id="close-ai-panel">×</button>
+        <!-- Agent cards will be dynamically inserted here -->
     </div>
-</header>
-<div id="status-bar">
-    <div id="file-meta">demo.html</div>
-    <div id="editor-meta">Cursor: 1:0 | Lines: 1 | Chars: 0 | History: 1</div>
-</div>
-<div id="editor-stage">
-    <aside id="left-panel">
-        <div class="grid grid-cols-2 gap-2">
-           <button id="btn-undo" class="small">UNDO</button>
-           <button id="btn-redo" class="small">REDO</button>
-        </div>
-        
-        <div style="margin-top: 20px; font-size: 11px; color: var(--muted-text);">
-            <p><strong>Quantum Actions:</strong></p>
-            <button id="btn-optimize" class="small" style="width:100%;margin-bottom:5px;">Quantum Optimize</button>
-            <button id="btn-document" class="small" style="width:100%;margin-bottom:5px;">Fractal Document</button>
-            <button id="btn-refactor" class="small" style="width:100%;">Hyper Refactor</button>
-            <button id="btn-orchestrate" class="small success" style="width:100%;margin-top:5px;">Multi-Agent Consensus</button>
-        </div>
-
-        <div style="margin-top: 20px; font-size: 11px; color: var(--muted-text);">
-            <p><strong>Quantum AI Commands:</strong></p>
-            <ul style="padding-left: 15px; list-style-type: disc; space-y-1">
-                <li>Rewrite this function</li>
-                <li>Optimize performance</li>
-                <li>Add error handling</li>
-                <li>Convert to TypeScript</li>
-                <li>Explain this code</li>
-            </ul>
-        </div>
-    </aside>
-
-    <div class="editor-container">
-        <div class="quantum-thinking" id="quantum-thinking"></div>
-        <div class="editor-scroll-pane" id="editor-scroll-pane">
-            <div class="line-numbers" id="line-numbers">1</div>
-            <div
-                class="editor-content"
-                id="editor"
-                contenteditable="true"
-                spellcheck="false"
-                data-gramm="false"
-                data-gramm_editor="false"
-                data-enable-grammarly="false"
-            ><!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Quantum Fractal AI Demo</title>
-  <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
-      color: white;
-      text-align: center;
-      padding: 20px;
-    }
-    .container {
-      background: rgba(0, 0, 0, 0.7);
-      padding: 30px;
-      border-radius: 15px;
-      display: inline-block;
-    }
-    h1 {
-      font-size: 2.5rem;
-    }
-  </style>
-</head>
-<body>
-  <div class="container">
-    <h1>Welcome to Quantum Fractal AI</h1>
-    <p>Experience hyper-accelerated AI reasoning.</p>
-  </div>
-</body>
-</html></div>
-        </div>
-    </div>
-</div>
-<footer>
-    <input id="prompt-input" placeholder="Enter quantum command (e.g., 'rewrite this with fractal optimization')">
-    <div class="footer-options">
-      <label class="flex items-center text-xs text-gray-400 cursor-pointer">
-          <input type="checkbox" id="multi-agent-mode" class="mr-1.5 h-4 w-4 rounded">
-          Multi-Agent
-      </label>
-      <button id="send-button" class="success">QUANTUM PROCESS</button>
-    </div>
-</footer>
-
-<div id="preview-panel">
-    <div id="preview-header">
-        <span>Quantum Preview</span>
-        <button id="close-preview">×</button>
-    </div>
-    <iframe id="preview-content"></iframe>
-</div>
-<div id="ai-response-panel">
-    <button id="close-ai-panel">×</button>
-    <div id="ai-response-content"></div>
-</div>
-
-<script type="module">
-import { GoogleGenAI } from '@google/genai';
-
-const AGENTS_CONFIG = {
-    nexus: { name: 'Nexus', subtitle: 'Fractal Core', color: 'var(--agent-nexus)' },
-    cognito: { name: 'Cognito', subtitle: 'Quantum Loop', color: 'var(--agent-cognito)' },
-    relay: { name: 'Relay', subtitle: '2244', color: 'var(--agent-relay)' },
-    sentinel: { name: 'Sentinel', subtitle: 'Fractal Coin', color: 'var(--agent-sentinel)' },
-    echo: { name: 'Echo', subtitle: 'Fractal Code', color: 'var(--agent-echo)' },
-};
-
-class QuantumHighlighter {
-    constructor() {
-        this.rules = {
-            html: [
-                [/(&lt;!--[\s\S]*?--&gt;)/g, 'sh-comment'],
-                [/(&lt;\/?)([a-zA-Z0-9-]+)/g, (m, p1, p2) => `${p1}<span class="sh-tag">${p2}</span>`],
-                [/([a-zA-Z-]+)=/g, '<span class="sh-property">$1</span>='],
-                [/(".*?")/g, 'sh-string'],
-            ],
-            js: [
-                [/(\/\/[^\n]*|\/\*[\s\S]*?\*\/)/g, 'sh-comment'],
-                [/([`"'])(?:(?=(\\?))\2.)*?\1/g, 'sh-string'],
-                [/\b(if|else|for|while|function|return|const|let|var|class|new|import|export|from|async|await)\b/g, 'sh-keyword'],
-                [/\b\d+(\.\d+)?\b/g, 'sh-number'],
-                [/([a-zA-Z_$][\w$]*)(?=\s*\()/g, 'sh-function'],
-                [/([\[\]\{\}\(\)])/g, 'sh-bracket'],
-                [/([=+\-*/%<>!&|?:]|[.]{1,3})/g, 'sh-op'],
-            ],
-            css: [
-              [/(\/\*[\s\S]*?\*\/)/g, 'sh-comment'],
-              [/([a-zA-Z-]+)(?=:)/g, 'sh-property'],
-              [/(#[\w\d]{3,6})/g, 'sh-number'],
-              [/("(?:\\.|[^"])*"|'(?:\\.|[^'])*')/g, 'sh-string'],
-            ]
-        };
-    }
-
-    escapeHtml(text) {
-        return text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
-
-    highlight(text, language = 'html') {
-        if (!text) return '';
-        const langRules = this.rules[language] || [];
-        if (langRules.length === 0) return this.escapeHtml(text);
-
-        let highlightedText = this.escapeHtml(text);
-        for (const [regex, style] of langRules) {
-            highlightedText = highlightedText.replace(regex, (match, ...args) => {
-                if (typeof style === 'function') return style(match, ...args);
-                return `<span class="${style}">${match}</span>`;
-            });
-        }
-        return highlightedText.replace(/<span class="[^"]+">(\s*<span class="[^"]+">[\s\S]*?<\/span>\s*)<\/span>/g, '$1');
-    }
-}
-
-class QuantumEditor {
-    constructor() {
-        this.editor = document.getElementById('editor');
-        this.lineNumbers = document.getElementById('line-numbers');
-        this.scrollPane = document.getElementById('editor-scroll-pane');
-        this.statusEditor = document.getElementById('editor-meta');
-        this.highlighter = new QuantumHighlighter();
-        this.quantumThinking = document.getElementById('quantum-thinking');
-
-        this.currentFileType = 'html';
-        this.historyStack = [this.editor.textContent];
-        this.historyIndex = 0;
-        this.isComposing = false;
-        
-        this.init();
-    }
-
-    init() {
-        this.bindEvents();
-        this.render(this.getContent());
-        this.createFractalNodes();
-    }
     
-    createFractalNodes() {
-        this.quantumThinking.innerHTML = '';
-        for (let i = 0; i < 12; i++) {
-            const node = document.createElement('div');
-            node.className = 'fractal-node';
-            Object.assign(node.style, {
-                left: `${Math.random() * 100}%`,
-                top: `${Math.random() * 100}%`,
-                animationDelay: `${Math.random() * 2}s`,
-                background: i % 2 === 0 ? 'var(--agent-nexus)' : 'var(--agent-cognito)'
-            });
-            this.quantumThinking.appendChild(node);
-        }
-    }
-
-    bindEvents() {
-        this.editor.addEventListener('input', () => this.handleInput());
-        this.editor.addEventListener('keydown', e => this.handleKeydown(e));
-        ['click', 'keyup'].forEach(evt => this.editor.addEventListener(evt, () => this.updateStatus()));
-        this.scrollPane.addEventListener('scroll', () => this.syncScroll());
-    }
-
-    handleInput() {
-        const newContent = this.getContent();
-        if (this.historyStack[this.historyIndex] !== newContent) {
-            this.historyStack = this.historyStack.slice(0, this.historyIndex + 1);
-            this.historyStack.push(newContent);
-            this.historyIndex = this.historyStack.length - 1;
-        }
-        this.updateLineNumbers();
-        this.updateStatus();
-    }
-    
-    handleKeydown(event) {
-        if (event.key === 'Tab') {
-            event.preventDefault();
-            document.execCommand('insertText', false, '  ');
-        } else if (event.ctrlKey || event.metaKey) {
-            if (event.key === 'z' && !event.shiftKey) {
-                event.preventDefault(); this.undo();
-            } else if (event.key === 'z' && event.shiftKey || event.key === 'y') {
-                event.preventDefault(); this.redo();
-            }
-        }
-    }
-
-    undo() {
-        if (this.historyIndex > 0) {
-            this.historyIndex--;
-            this.render(this.historyStack[this.historyIndex], false);
-        }
-    }
-
-    redo() {
-        if (this.historyIndex < this.historyStack.length - 1) {
-            this.historyIndex++;
-            this.render(this.historyStack[this.historyIndex], false);
-        }
-    }
-    
-    render(content, pushToHistory = true) {
-        const selection = window.getSelection();
-        const range = selection.rangeCount > 0 ? selection.getRangeAt(0) : null;
-        const relativePos = range ? this.getCursorPosition(range) : 0;
-        
-        this.editor.innerHTML = this.highlighter.highlight(content, this.currentFileType);
-        this.updateLineNumbers();
-        this.updateStatus();
-
-        if (pushToHistory) this.handleInput();
-        this.setCursorPosition(relativePos);
-    }
-    
-    getCursorPosition(range) {
-        const preCaretRange = range.cloneRange();
-        preCaretRange.selectNodeContents(this.editor);
-        preCaretRange.setEnd(range.startContainer, range.startOffset);
-        return preCaretRange.toString().length;
-    }
-    
-    setCursorPosition(charCount) {
-        let range = document.createRange();
-        let sel = window.getSelection();
-        let charCounter = 0;
-        let found = false;
-
-        function findNode(node) {
-            if (found) return;
-            if (node.nodeType === Node.TEXT_NODE) {
-                if (charCounter + node.length >= charCount) {
-                    range.setStart(node, charCount - charCounter);
-                    sel.removeAllRanges();
-                    sel.addRange(range);
-                    found = true;
-                } else {
-                    charCounter += node.length;
-                }
-            } else {
-                for (let i = 0; i < node.childNodes.length; i++) {
-                    findNode(node.childNodes[i]);
-                }
-            }
-        }
-        findNode(this.editor);
-    }
-
-    syncScroll() {
-        this.lineNumbers.scrollTop = this.scrollPane.scrollTop;
-    }
-
-    updateLineNumbers() {
-        const lineCount = this.getContent().split('\n').length || 1;
-        this.lineNumbers.innerHTML = Array.from({ length: lineCount }, (_, i) => i + 1).join('<br>');
-    }
-
-    updateStatus() {
-        const text = this.getContent();
-        const lines = text.split('\n').length;
-        const chars = text.length;
-
-        const selection = window.getSelection();
-        let line = 1, col = 0;
-
-        if (selection.rangeCount > 0) {
-            const range = selection.getRangeAt(0);
-            const preCaretRange = range.cloneRange();
-            preCaretRange.selectNodeContents(this.editor);
-            preCaretRange.setEnd(range.startContainer, range.startOffset);
-            const textToCursor = preCaretRange.toString();
-            const linesToCursor = textToCursor.split('\n');
-            line = linesToCursor.length;
-            col = linesToCursor[linesToCursor.length - 1].length;
-        }
-
-        this.statusEditor.textContent = `Cursor: ${line}:${col} | Lines: ${lines} | Chars: ${chars} | History: ${this.historyStack.length}`;
-    }
-
-    setContent(content) {
-        this.render(content, true);
-        this.historyStack = [content];
-        this.historyIndex = 0;
-        this.updateStatus();
-    }
-
-    getContent() {
-        return this.editor.textContent || '';
-    }
-}
-
-class QuantumFractalSystem {
-    constructor(editor) {
-        this.editor = editor;
-        this.aiResponsePanel = document.getElementById('ai-response-panel');
-        this.aiResponseContent = document.getElementById('ai-response-content');
-        this.isProcessing = false;
-        this.aiOutputCode = null;
-
-        const API_KEY = process.env.API_KEY;
-        if (!API_KEY) console.warn("API_KEY environment variable not set.");
-        this.ai = new GoogleGenAI({ apiKey: API_KEY });
-
-        this.bindEvents();
-    }
-    
-    bindEvents() {
-        document.getElementById('send-button').addEventListener('click', () => this.runQuantumAI());
-        document.getElementById('prompt-input').addEventListener('keydown', e => {
-            if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-                e.preventDefault();
-                this.runQuantumAI();
-            }
-        });
-        document.getElementById('close-ai-panel').addEventListener('click', () => this.aiResponsePanel.style.display = 'none');
-        
-        // Quick actions
-        document.getElementById('btn-optimize').addEventListener('click', () => this.runQuickAction("Apply quantum fractal optimization to this code"));
-        document.getElementById('btn-document').addEventListener('click', () => this.runQuickAction("Add fractal documentation with quantum clarity"));
-        document.getElementById('btn-refactor').addEventListener('click', () => this.runQuickAction("Refactor using quantum fractal patterns and hyperthreaded efficiency"));
-        document.getElementById('btn-orchestrate').addEventListener('click', () => this.runQuickAction("Analyze the current code and generate 3 alternative optimized versions, then select the best one.", true));
-    }
-    
-    setProcessing(state) {
-        this.isProcessing = state;
-        document.getElementById('prompt-input').disabled = state;
-        document.getElementById('send-button').disabled = state;
-        document.getElementById('send-button').textContent = state ? 'PROCESSING...' : 'QUANTUM PROCESS';
-    }
-
-    runQuickAction(prompt, useOrchestrator = false) {
-      document.getElementById('prompt-input').value = prompt;
-      document.getElementById('multi-agent-mode').checked = useOrchestrator;
-      this.runQuantumAI();
-    }
-
-    runQuantumAI() {
-        const prompt = document.getElementById('prompt-input').value.trim();
-        const useOrchestrator = document.getElementById('multi-agent-mode').checked;
-        if (!prompt || this.isProcessing) return;
-
-        if (useOrchestrator) {
-            this.runMultiAgentOrchestrator(prompt, this.editor.getContent());
-        } else {
-            this.processSinglePrompt(prompt, this.editor.getContent());
-        }
-    }
-    
-    getSystemInstruction(language) {
-      return `You are a Quantum Fractal AI, a hyper-intelligent code generation model. Your purpose is to provide expert-level, optimized, and elegant code solutions. Analyze the user's request and the provided code context. Generate only the complete, functional code requested. DO NOT include any explanations, apologies, or conversational text in your response. The language is ${language}. Your output must be raw code, without any markdown fences (like \`\`\`).`;
-    }
-    
-    updateAgentUI(agentName, message, state) {
-        const agentEl = document.getElementById(`agent-card-${agentName}`);
-        if (!agentEl) return;
-        
-        const contentEl = agentEl.querySelector('.agent-content');
-        if (state === 'processing') {
-            contentEl.innerHTML = `<div class="quantum-spinner"></div><span>${message}</span>`;
-            agentEl.classList.add('processing');
-        } else {
-            contentEl.innerHTML = `<span>${message}</span>`;
-            agentEl.classList.remove('processing');
-        }
-    }
-    
-    initAgentUI(isMultiAgent) {
-        this.aiResponsePanel.style.display = 'block';
-        this.aiResponseContent.innerHTML = '';
-        this.aiOutputCode = null;
-
-        const agentsToDisplay = isMultiAgent ? Object.keys(AGENTS_CONFIG) : ['nexus', 'cognito', 'echo'];
-        
-        agentsToDisplay.forEach(name => {
-            const config = AGENTS_CONFIG[name];
-            const card = document.createElement('div');
-            card.id = `agent-card-${name}`;
-            card.className = 'agent-card';
-            card.style.borderLeftColor = config.color;
-            card.innerHTML = `
-                <div class="agent-title" style="color: ${config.color};">${config.name}</div>
-                <div class="agent-subtitle" style="font-size: 11px; color: var(--muted-text);">${config.subtitle}</div>
-                <div class="agent-content">
-                  ${name === 'nexus' ? 'Awaiting quantum command...' : 'Ready'}
-                </div>
-            `;
-            this.aiResponseContent.appendChild(card);
-        });
-    }
-
-    async processSinglePrompt(prompt, context) {
-        this.setProcessing(true);
-        this.initAgentUI(false);
-        
-        try {
-            this.updateAgentUI('nexus', 'Orchestrating quantum fractal reasoning...', 'processing');
-            await new Promise(r => setTimeout(r, 400));
-            this.updateAgentUI('nexus', 'Done', 'success');
-            
-            this.updateAgentUI('cognito', 'Executing hyperthreaded fractal analysis...', 'processing');
-            const fullPrompt = `CONTEXT:\n\`\`\`${this.editor.currentFileType}\n${context}\n\`\`\`\n\nUSER REQUEST:\n${prompt}`;
-            
-            const response = await this.ai.models.generateContent({
-                model: "gemini-2.5-pro",
-                contents: fullPrompt,
-                config: { systemInstruction: this.getSystemInstruction(this.editor.currentFileType) },
-            });
-            
-            this.aiOutputCode = response.text.trim();
-            this.updateAgentUI('cognito', 'Analysis complete.', 'success');
-            
-            this.updateAgentUI('echo', 'Generating quantum fractal report...', 'processing');
-            await new Promise(r => setTimeout(r, 200));
-            
-            this.showFinalResult(this.aiOutputCode);
-            this.updateAgentUI('echo', 'Quantum solution generated.', 'success');
-
-        } catch (error) {
-            console.error("Gemini API Error:", error);
-            this.updateAgentUI('echo', `Error: Failed to communicate with the Quantum Core.`, 'error');
-        } finally {
-            this.setProcessing(false);
-        }
-    }
-    
-    async runMultiAgentOrchestrator(prompt, context) {
-        this.setProcessing(true);
-        this.initAgentUI(true);
-        const sleep = ms => new Promise(res => setTimeout(res, ms));
-
-        try {
-            this.updateAgentUI('nexus', 'Starting multi-agent orchestrator...', 'processing');
-            await sleep(300);
-
-            const agentCount = 3;
-            this.updateAgentUI('cognito', `Spawning ${agentCount} agents...`, 'processing');
-            await sleep(300);
-
-            this.updateAgentUI('relay', 'Broadcasting prompt to agent swarm...', 'processing');
-            await sleep(300);
-
-            const agentPrompts = [
-                `Optimize this code for readability and simplicity. Code: ${context}`,
-                `Refactor this code for maximum performance. Code: ${context}`,
-                `Rewrite this code using modern, idiomatic patterns. Code: ${context}`,
-            ];
-
-            this.updateAgentUI('sentinel', 'Agents are reasoning...', 'processing');
-
-            const responses = await Promise.all(
-                agentPrompts.map((p, i) =>
-                    this.ai.models.generateContent({
-                        model: "gemini-2.5-flash",
-                        contents: p,
-                        config: { systemInstruction: this.getSystemInstruction('html') },
-                    }).then(res => ({
-                        candidate: res.text.trim(),
-                        agentId: `Agent-${i+1}`,
-                        score: Math.random() * 10,
-                        avgEntropy: Math.random() * 8
-                    }))
-                )
-            );
-            
-            this.updateAgentUI('nexus', 'Done', 'success');
-            this.updateAgentUI('cognito', 'Done', 'success');
-            this.updateAgentUI('relay', 'Done', 'success');
-
-            this.updateAgentUI('sentinel', 'Validating consensus and scoring results...', 'processing');
-            await sleep(500);
-            
-            responses.sort((a, b) => b.score - a.score);
-            const bestCandidate = responses[0];
-            
-            const consensusResult = {
-                selectedCandidate: bestCandidate.candidate,
-                score: bestCandidate.score,
-                rootAgent: bestCandidate.agentId,
-                allCandidates: responses.map(r => ({ ...r, agents: [r.agentId], count:1 }))
-            };
-            
-            this.showConsensusPanel(consensusResult);
-            this.aiOutputCode = consensusResult.selectedCandidate;
-            this.showFinalResult(this.aiOutputCode, 'Multi-Agent Consensus');
-            
-            this.updateAgentUI('sentinel', 'Consensus achieved.', 'success');
-            this.updateAgentUI('echo', 'Consensus reached. Finalizing report.', 'success');
-            
-        } catch (error) {
-            console.error("Orchestrator Error:", error);
-            this.updateAgentUI('nexus', `Error: ${(error).message}`, 'error');
-        } finally {
-            this.setProcessing(false);
-        }
-    }
-    
-    showFinalResult(code, title = 'Quantum Fractal Solution') {
-      const existingResult = this.aiResponseContent.querySelector('.final-result-container');
-      if(existingResult) existingResult.remove();
-
-      const container = document.createElement('div');
-      container.className = 'agent-card final-result-container';
-      container.style.borderLeftColor = 'var(--agent-echo)';
-
-      const highlightedCode = this.editor.highlighter.highlight(code, this.editor.currentFileType);
-      
-      container.innerHTML = `
-        <div class="agent-title" style="color: var(--agent-echo);">${title}</div>
-        <pre style="background: #1a1a1a; padding: 10px; border-radius: 4px; overflow: auto; max-height: 250px; border: 1px solid var(--agent-cognito);"><code class="language-${this.editor.currentFileType}">${highlightedCode}</code></pre>
-        <div class="action-buttons">
-            <button class="small" onclick="window.quantumActions.copy()">Copy</button>
-            <button class="small" onclick="window.quantumActions.apply()">Apply Code</button>
-        </div>
-      `;
-      const echoCard = document.getElementById('agent-card-echo');
-      echoCard.insertAdjacentElement('afterend', container);
-    }
-    
-    showConsensusPanel(result) {
-      const existingPanel = this.aiResponseContent.querySelector('.consensus-panel');
-      if (existingPanel) existingPanel.remove();
-
-      const panel = document.createElement('div');
-      panel.className = 'consensus-panel';
-      
-      let candidatesHtml = '';
-      result.allCandidates.forEach((c, i) => {
-        const isSelected = i === 0;
-        candidatesHtml += `
-          <div class="candidate-item ${isSelected ? 'selected-candidate' : ''}">
-              <div class="candidate-meta">
-                  <span>Agents: ${c.count}</span>
-                  <span>Entropy: ${c.avgEntropy.toFixed(2)}</span>
-              </div>
-              <p class="candidate-content">${c.candidate.split('\\n')[0]}</p>
-          </div>
-        `;
-      });
-      
-      panel.innerHTML = `
-        <div class="consensus-header">
-            <span>Multi-Agent Consensus</span>
-            <span class="entropy-badge">Score: ${result.score.toFixed(2)}</span>
-        </div>
-        <div class="candidates-list">${candidatesHtml}</div>
-      `;
-      const sentinelCard = document.getElementById('agent-card-sentinel');
-      sentinelCard.insertAdjacentElement('afterend', panel);
-    }
-}
-
-// ----- Initialize Quantum Editor and Fractal System -----
-document.addEventListener('DOMContentLoaded', () => {
-    const quantumEditor = new QuantumEditor();
-    const quantumSystem = new QuantumFractalSystem(quantumEditor);
-    
-    window.quantumActions = {
-        copy: () => {
-          if (quantumSystem.aiOutputCode) {
-            navigator.clipboard.writeText(quantumSystem.aiOutputCode);
-          }
-        },
-        apply: () => {
-          if (quantumSystem.aiOutputCode) {
-            quantumEditor.setContent(quantumSystem.aiOutputCode);
-          }
-        }
-    };
-
-    // UI Bindings
-    document.getElementById('left-toggle').addEventListener('click', () => {
-        document.getElementById('editor-stage').classList.toggle('left-panel-open');
-    });
-
-    document.getElementById('render-html').addEventListener('click', () => {
-        const blob = new Blob([quantumEditor.getContent()], { type: 'text/html' });
-        document.getElementById('preview-content').src = URL.createObjectURL(blob);
-        document.getElementById('preview-panel').style.display = 'flex';
-    });
-
-    document.getElementById('close-preview').addEventListener('click', () => {
-        document.getElementById('preview-panel').style.display = 'none';
-        URL.revokeObjectURL(document.getElementById('preview-content').src);
-    });
-
-    document.getElementById('btn-undo').addEventListener('click', () => quantumEditor.undo());
-    document.getElementById('btn-redo').addEventListener('click', () => quantumEditor.redo());
-});
-</script>
-
+    <script type="module" src="/index.js"></script>
 </body>
 </html>
