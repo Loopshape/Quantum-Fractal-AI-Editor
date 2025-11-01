@@ -5,7 +5,7 @@ import { EditorStage } from './components/EditorStage';
 import { Footer } from './components/Footer';
 import { AiResponsePanel } from './components/AiResponsePanel';
 import { PreviewPanel } from './components/PreviewPanel';
-import { AgentName, AgentStatus, ConsensusResult } from './types';
+import { AgentName, AgentStatus, ConsensusResult, LogEntry } from './types';
 import { INITIAL_AGENTS, INITIAL_CODE, AGENT_NAMES } from './constants';
 import { processQuantumPrompt, runMultiAgentOrchestrator } from './services/geminiService';
 
@@ -24,6 +24,7 @@ const App: React.FC = () => {
     const [agentStatuses, setAgentStatuses] = useState<Record<AgentName, AgentStatus>>(INITIAL_AGENTS);
     const [aiOutput, setAiOutput] = useState<{ code: string; highlighted: string } | null>(null);
     const [consensusResult, setConsensusResult] = useState<ConsensusResult | null>(null);
+    const [logs, setLogs] = useState<LogEntry[]>([]);
 
     const updateAgentStatus = (agent: AgentName, message: string, state: 'idle' | 'processing' | 'error' | 'success' = 'processing') => {
         setAgentStatuses(prev => ({
@@ -39,14 +40,14 @@ const App: React.FC = () => {
         setAiOutput(null);
         setConsensusResult(null);
         setAgentStatuses(INITIAL_AGENTS);
+        setLogs([]);
 
         const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
 
         if (useOrchestrator) {
             try {
                 const orchestratorGenerator = runMultiAgentOrchestrator(prompt, editorContent);
-                // FIX: Use `in` operator for type guarding to correctly handle the discriminated union
-                // returned by the async generator. This resolves multiple TypeScript errors.
+
                 for await (const update of orchestratorGenerator) {
                     if ("agent" in update) {
                         updateAgentStatus(update.agent, update.message, update.state);
@@ -54,6 +55,9 @@ const App: React.FC = () => {
                     if ("result" in update) {
                         setConsensusResult(update.result);
                         setAiOutput({ code: update.result.selectedCandidate, highlighted: update.result.highlightedCode });
+                    }
+                    if ("log" in update) {
+                        setLogs(prev => [...prev, update.log]);
                     }
                 }
             } catch (error) {
@@ -145,6 +149,7 @@ const App: React.FC = () => {
                 aiOutput={aiOutput}
                 consensusResult={consensusResult}
                 onApplyCode={applyAiCode}
+                logs={logs}
             />
 
             <PreviewPanel

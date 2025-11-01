@@ -1,5 +1,6 @@
+
 import React, { useRef, useEffect, useCallback } from 'react';
-import { useSyntaxHighlighter } from '../hooks/useSyntaxHighlighter';
+import { highlight } from '../hooks/useSyntaxHighlighter';
 
 interface EditorProps {
     content: string;
@@ -11,7 +12,6 @@ interface EditorProps {
 export const Editor: React.FC<EditorProps> = ({ content, onContentChange, onCursorChange, language }) => {
     const editorRef = useRef<HTMLDivElement>(null);
     const lineNumbersRef = useRef<HTMLDivElement>(null);
-    const highlight = useSyntaxHighlighter();
 
     const updateLineNumbers = useCallback(() => {
         if (!editorRef.current || !lineNumbersRef.current) return;
@@ -25,7 +25,7 @@ export const Editor: React.FC<EditorProps> = ({ content, onContentChange, onCurs
             editor.innerHTML = highlight(content, language);
             updateLineNumbers();
         }
-    }, [content, language, highlight, updateLineNumbers]);
+    }, [content, language, updateLineNumbers]);
 
 
     const handleInput = (e: React.FormEvent<HTMLDivElement>) => {

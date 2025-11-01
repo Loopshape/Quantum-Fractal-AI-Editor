@@ -28,3 +28,10 @@ export interface ConsensusResult {
     rootAgent: string;
     allCandidates: ConsensusCandidate[];
 }
+
+export interface LogEntry {
+  timestamp: string;
+  source: AgentName;
+  target?: AgentName;
+  message: string;
+}

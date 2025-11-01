@@ -1,7 +1,7 @@
 import React from 'react';
 import { AgentCard } from './AgentCard';
-import { AgentName, AgentStatus, ConsensusResult } from '../types';
-import { AGENT_NAMES } from '../constants';
+import { AgentName, AgentStatus, ConsensusResult, LogEntry } from '../types';
+import { AGENT_NAMES, AGENTS_CONFIG } from '../constants';
 
 interface AiResponsePanelProps {
     isOpen: boolean;
@@ -10,10 +10,13 @@ interface AiResponsePanelProps {
     aiOutput: { code: string; highlighted: string } | null;
     consensusResult: ConsensusResult | null;
     onApplyCode: (code: string) => void;
+    logs: LogEntry[];
 }
 
+const getAgentColor = (name: AgentName) => AGENTS_CONFIG[name]?.color || 'text-gray-400';
+
 export const AiResponsePanel: React.FC<AiResponsePanelProps> = ({
-    isOpen, onClose, agentStatuses, aiOutput, consensusResult, onApplyCode
+    isOpen, onClose, agentStatuses, aiOutput, consensusResult, onApplyCode, logs
 }) => {
     if (!isOpen) return null;
     
@@ -30,16 +33,19 @@ export const AiResponsePanel: React.FC<AiResponsePanelProps> = ({
                     <AgentCard key={name} name={name} status={agentStatuses[name]} />
                 ))}
 
-                {aiOutput && (
-                    <div className="agent-card bg-[#313328] border-l-4 border-[#4ac94a] p-3 rounded-lg">
-                        <div className="agent-title text-[#4ac94a] font-bold">Echo</div>
-                         <div className="mt-2 p-2 bg-black/50 rounded max-h-64 overflow-auto border border-gray-700">
-                           <pre><code dangerouslySetInnerHTML={{ __html: aiOutput.highlighted }} /></pre>
-                         </div>
-                         <div className="flex gap-2 mt-3">
-                             <button onClick={() => handleCopy(aiOutput.code)} className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-500">Copy</button>
-                             <button onClick={() => onApplyCode(aiOutput.code)} className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-500">Apply Code</button>
-                         </div>
+                {logs.length > 0 && (
+                    <div className="mt-4 p-3 bg-black/30 rounded-lg border border-gray-700">
+                        <h4 className="text-sm font-bold text-gray-400 mb-2">Agent Communication Log</h4>
+                        <div className="space-y-1.5 text-xs font-mono max-h-40 overflow-y-auto pr-2">
+                            {logs.map((log, index) => (
+                                <div key={index} className="flex items-start text-gray-300">
+                                    <span className="text-gray-500 mr-2 flex-shrink-0">{log.timestamp}</span>
+                                    <span className={`font-bold mr-1 ${getAgentColor(log.source)}`}>{log.source.padEnd(8, ' ')}</span>
+                                    {log.target && <><span className="text-gray-500 mr-1">→</span> <span className={`font-bold mr-1 ${getAgentColor(log.target)}`}>{log.target}</span></>}
+                                    <span className="text-gray-300 flex-1">: {log.message}</span>
+                                </div>
+                            ))}
+                        </div>
                     </div>
                 )}
                  
@@ -60,6 +66,19 @@ export const AiResponsePanel: React.FC<AiResponsePanelProps> = ({
                                 </div>
                             ))}
                         </div>
+                    </div>
+                )}
+
+                {aiOutput && (
+                    <div className="agent-card bg-[#313328] border-l-4 border-[#4ac94a] p-3 rounded-lg mt-2">
+                        <div className="agent-title text-[#4ac94a] font-bold">Echo</div>
+                         <div className="mt-2 p-2 bg-black/50 rounded max-h-64 overflow-auto border border-gray-700">
+                           <pre><code dangerouslySetInnerHTML={{ __html: aiOutput.highlighted }} /></pre>
+                         </div>
+                         <div className="flex gap-2 mt-3">
+                             <button onClick={() => handleCopy(aiOutput.code)} className="text-xs px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-500">Copy</button>
+                             <button onClick={() => onApplyCode(aiOutput.code)} className="text-xs px-2 py-1 bg-green-600 text-white rounded hover:bg-green-500">Apply Code</button>
+                         </div>
                     </div>
                 )}
             </div>

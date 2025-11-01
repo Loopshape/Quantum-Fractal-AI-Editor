@@ -1,17 +1,7 @@
+
 import { GoogleGenAI, GenerateContentResponse, Type } from "@google/genai";
-import { AgentName, ConsensusResult } from "../types";
-import { useSyntaxHighlighter } from "../hooks/useSyntaxHighlighter";
-
-// This is a bit of a hack, but necessary to use a hook outside a component.
-// In a larger app, this highlighting logic would be a non-hook utility.
-let highlight: (text: string, lang: string) => string;
-const SyntaxHighlighterWrapper = () => {
-  highlight = useSyntaxHighlighter();
-  return null;
-};
-// Dummy component to initialize the hook
-export { SyntaxHighlighterWrapper };
-
+import { AgentName, ConsensusResult, LogEntry } from "../types";
+import { highlight } from "../hooks/useSyntaxHighlighter";
 
 const API_KEY = process.env.API_KEY;
 if (!API_KEY) {
@@ -51,29 +41,41 @@ export const processQuantumPrompt = async (prompt: string, context: string, lang
     }
 };
 
+type AgentUpdate = { agent: AgentName; message: string; state: 'processing' | 'success' | 'error' };
+type ResultUpdate = { result: ConsensusResult };
+type LogUpdate = { log: LogEntry };
+export type OrchestratorUpdate = AgentUpdate | ResultUpdate | LogUpdate;
+
 
 // Multi-Agent Orchestrator Simulation
-export async function* runMultiAgentOrchestrator(prompt: string, context: string) {
+export async function* runMultiAgentOrchestrator(prompt: string, context: string): AsyncGenerator<OrchestratorUpdate> {
     const agentCount = 3;
-    const update = (agent: AgentName, message: string, state: 'processing' | 'success' | 'error' = 'processing') => ({ agent, message, state });
+    const update = (agent: AgentName, message: string, state: 'processing' | 'success' | 'error' = 'processing'): AgentUpdate => ({ agent, message, state });
+    const log = (source: AgentName, message: string, target?: AgentName): LogUpdate => ({ log: { timestamp: new Date().toLocaleTimeString(), source, message, target } });
     const sleep = (ms: number) => new Promise(res => setTimeout(res, ms));
 
     yield update('nexus', 'Starting multi-agent orchestrator...');
-    await sleep(500);
+    yield log('nexus', 'Initiating consensus protocol.');
+    await sleep(300);
 
     yield update('cognito', `Spawning ${agentCount} agents...`);
-    await sleep(500);
+    yield log('nexus', `Requesting ${agentCount} cognitive threads.`, 'cognito');
+    await sleep(300);
 
     yield update('relay', 'Broadcasting prompt to agent swarm...');
+    yield log('nexus', `Broadcasting prompt: "${prompt.substring(0, 30)}..."`, 'relay');
+    await sleep(300);
     
     const agentPrompts = [
         `Optimize this code for readability and simplicity. Code: ${context}`,
         `Refactor this code for maximum performance. Code: ${context}`,
         `Rewrite this code using modern, idiomatic patterns. Code: ${context}`,
     ];
-
+    
+    yield log('relay', 'Distributing tasks to cognitive agents.', 'cognito');
     yield update('sentinel', 'Agents are reasoning...');
-    const responses = await Promise.all(
+    
+    const responsesPromise = Promise.all(
         agentPrompts.map((p, i) =>
             ai.models.generateContent({
                 model: "gemini-2.5-flash",
@@ -87,12 +89,23 @@ export async function* runMultiAgentOrchestrator(prompt: string, context: string
             }))
         )
     );
+    
+    // Simulate reasoning time with logs
+    for (let i = 0; i < agentCount; i++) {
+        await sleep(400);
+        yield log('cognito', `Agent-${i+1} is processing...`);
+    }
 
+    const responses = await responsesPromise;
+    yield log('cognito', 'Reasoning complete. Submitting candidates.', 'sentinel');
     yield update('sentinel', 'Validating consensus and scoring results...');
-    await sleep(1000);
+    await sleep(500);
 
     responses.sort((a, b) => b.score - a.score);
     const bestCandidate = responses[0];
+    
+    yield log('sentinel', `Consensus achieved. Root agent: ${bestCandidate.agentId}.`, 'nexus');
+    await sleep(200);
 
     const result: ConsensusResult = {
         selectedCandidate: bestCandidate.candidate,
@@ -103,5 +116,6 @@ export async function* runMultiAgentOrchestrator(prompt: string, context: string
     };
     
     yield update('echo', 'Consensus reached. Finalizing report.', 'success');
+    yield log('nexus', 'Forwarding final report to Echo.', 'echo');
     yield { result };
 }

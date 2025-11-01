@@ -1,4 +1,3 @@
-import { useCallback } from 'react';
 
 type Language = 'js' | 'html' | 'css' | string;
 
@@ -34,33 +33,29 @@ const escapeHtml = (text: string): string =>
     text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
 
-export const useSyntaxHighlighter = () => {
-    const highlight = useCallback((text: string, language: Language): string => {
-        if (!text) return '';
-        
-        const langRules = rules[language] || [];
-        if (langRules.length === 0) {
-            return escapeHtml(text);
-        }
+export const highlight = (text: string, language: Language): string => {
+    if (!text) return '';
+    
+    const langRules = rules[language] || [];
+    if (langRules.length === 0) {
+        return escapeHtml(text);
+    }
 
-        let highlightedText = escapeHtml(text);
+    let highlightedText = escapeHtml(text);
 
-        for (const [regex, style] of langRules) {
-            highlightedText = highlightedText.replace(regex, (match, ...args) => {
-                if (typeof style === 'function') {
-                    // FIX: This call is now type-safe because the `rules` type allows `style` to be a function.
-                    return style(match, ...args);
-                }
-                return `<span class="${style}">${match}</span>`;
-            });
-        }
-        
-        // This is a workaround for regex replacing nested spans. A proper tokenizer is better but more complex.
-        // It cleans up artifacts like <span..><span..>text</span></span>
-        highlightedText = highlightedText.replace(/<span class="[^"]+">(\s*<span class="[^"]+">[\s\S]*?<\/span>\s*)<\/span>/g, '$1');
+    for (const [regex, style] of langRules) {
+        highlightedText = highlightedText.replace(regex, (match, ...args) => {
+            if (typeof style === 'function') {
+                // FIX: This call is now type-safe because the `rules` type allows `style` to be a function.
+                return style(match, ...args);
+            }
+            return `<span class="${style}">${match}</span>`;
+        });
+    }
+    
+    // This is a workaround for regex replacing nested spans. A proper tokenizer is better but more complex.
+    // It cleans up artifacts like <span..><span..>text</span></span>
+    highlightedText = highlightedText.replace(/<span class="[^"]+">(\s*<span class="[^"]+">[\s\S]*?<\/span>\s*)<\/span>/g, '$1');
 
-        return highlightedText;
-    }, []);
-
-    return highlight;
+    return highlightedText;
 };
