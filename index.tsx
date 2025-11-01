@@ -14,6 +14,10 @@ interface Agent {
     element: HTMLDivElement | null;
     genesisHash?: string;
     originHash?: string;
+    entropy?: number;
+    fractalScore?: number;
+    depRank?: number;
+    qbitScore?: number;
 }
 
 interface Particle {
@@ -288,6 +292,32 @@ function updateAgentState(name: AgentName, state: AgentState, content?: string, 
     }
 }
 
+function updateAgentMetrics(name: AgentName, metrics: { entropy: number; fractalScore: number; depRank: number; qbitScore: number; }) {
+    const agent = agents.find(a => a.name === name);
+    if (!agent) return;
+
+    agent.entropy = metrics.entropy;
+    agent.fractalScore = metrics.fractalScore;
+    agent.depRank = metrics.depRank;
+    agent.qbitScore = metrics.qbitScore;
+    
+    const card = agent.element;
+    if (!card) return;
+
+    const headerRight = card.querySelector('.agent-header-right');
+    if (!headerRight) return;
+
+    let metricEl = headerRight.querySelector('.agent-qbit-score') as HTMLDivElement;
+    if (!metricEl) {
+        metricEl = document.createElement('div');
+        metricEl.className = 'agent-qbit-score';
+        headerRight.appendChild(metricEl);
+    }
+    metricEl.textContent = `Qbit: ${metrics.qbitScore.toFixed(2)}`;
+    metricEl.title = `E: ${metrics.entropy.toFixed(2)}, F: ${metrics.fractalScore.toFixed(2)}, D: ${metrics.depRank.toFixed(2)}`;
+}
+
+
 function renderAgentCard(agent: Agent): HTMLDivElement {
     const card = document.createElement('div');
     card.className = 'agent-card';
@@ -295,7 +325,9 @@ function renderAgentCard(agent: Agent): HTMLDivElement {
     card.innerHTML = `
         <div class="agent-header">
             <div class="agent-title" style="color: ${agent.color};">${agent.name}</div>
-            <div class="agent-hash" title="Origin Hash">${agent.originHash ? `${agent.originHash.substring(0, 8)}...` : 'pending...'}</div>
+            <div class="agent-header-right">
+                <div class="agent-hash" title="Origin Hash">${agent.originHash ? `${agent.originHash.substring(0, 8)}...` : 'pending...'}</div>
+            </div>
         </div>
         <div class="agent-content">
             <div class="quantum-spinner" style="display: none;"></div>
@@ -327,7 +359,7 @@ function renderConsensusPanel(genesisHash: string) {
         consensusPanel.id = 'consensus-panel';
         aiPanel.prepend(consensusPanel);
     }
-    consensusPanel.className = 'consensus-panel'; // Use ID for styling
+    consensusPanel.className = 'consensus-panel';
     
     consensusPanel.innerHTML = `
         <div class="consensus-header">
@@ -357,6 +389,41 @@ function updateConsensusPanel(thinkingPool: Record<AgentName, string[]>) {
     }
     contentDiv.innerHTML = html;
     contentDiv.parentElement!.scrollTop = contentDiv.parentElement!.scrollHeight;
+}
+
+function updateTopAgentsPanel() {
+    let panel = document.getElementById('top-agents-panel');
+    if (!panel) {
+        panel = document.createElement('div');
+        panel.id = 'top-agents-panel';
+        panel.className = 'consensus-panel'; // Reuse styles
+        const container = document.getElementById('consensus-panel');
+        container?.parentNode?.insertBefore(panel, container.nextSibling);
+    }
+    
+    const scoredAgents = agents
+        .filter(a => a.qbitScore !== undefined)
+        .sort((a, b) => (b.qbitScore || 0) - (a.qbitScore || 0));
+    
+    const maxScore = Math.max(...scoredAgents.map(a => a.qbitScore || 0), 1);
+
+    let content = `<div class="consensus-header">📊 Top Agent Qbit Scores</div>`;
+    content += '<div class="top-agents-grid">';
+
+    scoredAgents.forEach(agent => {
+        const score = agent.qbitScore || 0;
+        const barWidth = (score / 10) * 100; // Assuming max score is 10
+        content += `
+            <div class="agent-name" style="color: ${agent.color}">${agent.name}</div>
+            <div class="agent-score">${score.toFixed(2)}</div>
+            <div class="agent-bar-container">
+                <div class="agent-bar" style="width: ${barWidth}%; background-color: ${agent.color};"></div>
+            </div>
+        `;
+    });
+    content += '</div>';
+
+    panel.innerHTML = content;
 }
 
 
@@ -403,7 +470,7 @@ async function streamContentToAgent(agentName: string, prompt: string, isFinalAg
     try {
         const response = await ai.models.generateContent({
             model: 'gemini-2.5-pro',
-            contents: [{ parts: [{ text: prompt }] }],
+            contents: prompt,
         });
         
         const fullContent = response.text;
@@ -453,6 +520,70 @@ async function processAgentTurn(
     updateConsensusPanel(thinkingPool);
 }
 
+async function processEvaluationPhase(nexusAgent: Agent, thinkingPool: Record<AgentName, string[]>, round: number) {
+    updateAgentState(nexusAgent.name, 'THINKING', `Evaluating Round ${round} contributions...`);
+
+    const contributionsToEvaluate: Record<string, string> = {};
+    for (const agentName in thinkingPool) {
+        // Evaluate the contribution from the current round
+        if (thinkingPool[agentName][round - 1]) {
+            contributionsToEvaluate[agentName] = thinkingPool[agentName][round - 1];
+        }
+    }
+    
+    if (Object.keys(contributionsToEvaluate).length === 0) {
+        updateAgentState(nexusAgent.name, 'DONE', `No new contributions to evaluate in Round ${round}.`);
+        return;
+    }
+
+    const evaluationPrompt = `
+        You are Nexus, the orchestrator. Your task is to evaluate the contributions from your team of AI agents for this round.
+        For each agent's contribution, you must provide a score for three metrics on a scale of 0.0 to 10.0:
+        1.  **Entropy**: How novel, surprising, or creative is the idea? High scores for unique, non-obvious contributions.
+        2.  **Fractal Score**: How deep, complex, and self-similar is the reasoning? High scores for contributions that show multi-layered thinking or identify underlying patterns.
+        3.  **Dependency Rank**: How well does this contribution build upon and connect with previous ideas in the thinking pool? High scores for contributions that synthesize or intelligently extend the existing context.
+
+        Analyze the following contributions:
+        ${JSON.stringify(contributionsToEvaluate, null, 2)}
+
+        Provide your evaluation in a JSON object format ONLY. The root object should have agent names as keys. Each value should be an object with "entropy", "fractalScore", and "depRank" keys. Do not include any other text or explanations. Example:
+        {
+          "Cognito": { "entropy": 8.5, "fractalScore": 7.0, "depRank": 5.0 },
+          "Sentinel": { "entropy": 6.0, "fractalScore": 9.0, "depRank": 8.0 }
+        }
+    `;
+
+    // FIX: Declare response outside the try block to make it accessible in the catch block.
+    let response: GenerateContentResponse | undefined;
+    try {
+        response = await ai.models.generateContent({
+            model: 'gemini-2.5-pro',
+            contents: evaluationPrompt,
+            config: {
+                responseMimeType: 'application/json'
+            }
+        });
+
+        const scores = JSON.parse(response.text);
+        for (const agentName in scores) {
+            if (agents.find(a => a.name === agentName) && scores[agentName]) {
+                const metrics = scores[agentName];
+                const { entropy = 0, fractalScore = 0, depRank = 0 } = metrics;
+                // Compute Qbit Score using the formula from the python script: fractal_score * 0.7 + entropy * 0.2 + dep_rank * 0.1
+                const qbitScore = (fractalScore * 0.7) + (entropy * 0.2) + (depRank * 0.1);
+                updateAgentMetrics(agentName, { entropy, fractalScore, depRank, qbitScore });
+            }
+        }
+        updateTopAgentsPanel();
+    } catch (e) {
+        console.error("Failed to parse evaluation scores:", e, response?.text);
+        updateAgentState(nexusAgent.name, 'ERROR', 'Failed to parse scores.');
+    }
+
+    updateAgentState(nexusAgent.name, 'DONE', `Evaluation for Round ${round} complete.`);
+}
+
+
 async function processNexusSynthesis(
     nexusAgent: Agent, 
     userPrompt: string, 
@@ -491,7 +622,7 @@ async function runOrchestration(prompt: string) {
     renderConsensusPanel(genesisHash);
     
     const agentInitializationPromises = currentConfig.agents.map(async (agentDef) => {
-        const originHash = await generateGenesisHash(genesisHash, agentDef.name);
+        const originHash = await generateOriginHash(genesisHash, agentDef.name);
         const agent: Agent = {
             ...agentDef,
             state: 'IDLE',
@@ -504,16 +635,22 @@ async function runOrchestration(prompt: string) {
     });
     agents = await Promise.all(agentInitializationPromises);
     renderAgentCards();
+    updateTopAgentsPanel(); // Create initial empty panel
     
     const thinkingPool: Record<AgentName, string[]> = {};
     agents.forEach(agent => { thinkingPool[agent.name] = []; });
 
-    // --- PHASE 2: PARALLEL REASONING ---
+    // --- PHASE 2: PARALLEL REASONING & EVALUATION ---
     for (let round = 1; round <= ORCHESTRATION_ROUNDS; round++) {
-        const roundPromises = agents.map(agent => 
-            processAgentTurn(agent, prompt, thinkingPool, genesisHash, round)
-        );
-        await Promise.all(roundPromises);
+        const reasoningPromises = agents
+            .filter(agent => agent.name !== 'Nexus') // Nexus evaluates, others reason
+            .map(agent => processAgentTurn(agent, prompt, thinkingPool, genesisHash, round));
+        await Promise.all(reasoningPromises);
+
+        const nexusAgent = agents.find(a => a.name === 'Nexus');
+        if (nexusAgent) {
+            await processEvaluationPhase(nexusAgent, thinkingPool, round);
+        }
     }
     
     // --- PHASE 3: FINAL SYNTHESIS ---

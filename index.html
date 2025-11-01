@@ -1,3 +1,10 @@
+<script type="importmap">
+{
+  "imports": {
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0"
+  }
+}
+</script>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -303,6 +310,10 @@
             outline: none;
             border-color: var(--accent);
         }
+
+        .persona-input.invalid {
+            border-color: var(--error);
+        }
         
         #comm-log-panel {
             max-height: 200px;
@@ -453,6 +464,13 @@
             font-weight: bold;
             font-size: 14px;
             white-space: nowrap;
+            flex-shrink: 0;
+        }
+        
+        .agent-header-right {
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
 
         .agent-hash {
@@ -466,6 +484,17 @@
             cursor: help;
         }
         
+        .agent-qbit-score {
+            font-size: 12px;
+            font-weight: bold;
+            color: var(--accent);
+            background: rgba(74, 201, 74, 0.1);
+            padding: 2px 6px;
+            border-radius: 4px;
+            flex-shrink: 0;
+            cursor: help;
+        }
+        
         .agent-share-btn {
             display: none;
         }
@@ -473,161 +502,32 @@
         .agent-content {
             font-size: 12px;
             line-height: 1.4;
-            min-height: 20px;
+            max-height: 100px;
+            overflow-y: auto;
+            color: #ccc;
             display: flex;
-            align-items: center;
+            align-items: flex-start;
+            gap: 6px;
         }
 
-        .nexus-task-input-container {
-            margin-top: 10px;
-            display: flex;
-            gap: 8px;
-        }
-
-        .nexus-task-input-container input {
-            flex: 1;
-            background: var(--status-bg);
-            border: 1px solid var(--muted-text);
-            color: #f0f0e0;
-            padding: 6px 8px;
-            border-radius: 3px;
-            font-family: inherit;
-            font-size: 12px;
-        }
-
-        .nexus-task-input-container input:focus {
-            outline: none;
-            border-color: var(--agent-nexus);
-        }
-
-        .nexus-task-input-container button {
-            background: var(--agent-nexus);
-            color: white;
-            border-color: var(--agent-nexus);
-        }
-        
-        .quantum-spinner {
-            width: 16px;
-            height: 16px;
-            display: inline-block;
-            margin-right: 6px;
-            position: relative;
-            flex-shrink: 0;
-        }
-
-        .quantum-spinner::before {
-            content: '';
+        /* ----- AI Response Panel ----- */
+        #ai-response-panel {
             position: absolute;
-            width: 100%;
-            height: 100%;
-            border: 2px solid transparent;
-            border-top: 2px solid var(--agent-cognito);
-            border-radius: 50%;
-            animation: quantumSpin 1s linear infinite;
-        }
-
-        .quantum-spinner::after {
-            content: '';
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            border: 2px solid transparent;
-            border-bottom: 2px solid var(--agent-nexus);
-            border-radius: 50%;
-            animation: quantumSpin 0.5s linear infinite;
-        }
-
-        @keyframes quantumSpin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        /* Action Buttons for Generated Content */
-        .action-buttons {
-            display: flex;
-            gap: 8px;
-            margin-top: 10px;
-        }
-        
-        .final-result-container .action-buttons button {
-            background-color: #555;
-        }
-
-        /* ----- Syntax Highlighting ----- */
-        .sh-comment { color: #64748b; font-style: italic; }
-        .sh-string { color: #a3e635; }
-        .sh-number { color: #f59e0b; }
-        .sh-keyword { color: #f472b6; }
-        .sh-function { color: #4ac94a; }
-        .sh-bracket { color: #c084fc; }
-        .sh-op { color: #94a3b8; }
-        .sh-tag { color: #f472b6; }
-        .sh-property { color: #7dd3fc; }
-        .sh-text { color: #e2e8f0; }
-        .sh-unknown { color: #f87171; }
-        
-        /* Quantum Scrollbar styling */
-        .editor-scroll-pane::-webkit-scrollbar, #ai-response-panel::-webkit-scrollbar, #comm-log-panel::-webkit-scrollbar, .consensus-panel::-webkit-scrollbar, #left-panel::-webkit-scrollbar {
-            width: 12px;
-        }
-
-        .editor-scroll-pane::-webkit-scrollbar-track, #ai-response-panel::-webkit-scrollbar-track, #comm-log-panel::-webkit-scrollbar-track, .consensus-panel::-webkit-scrollbar-track, #left-panel::-webkit-scrollbar-track {
-            background: var(--panel);
-        }
-
-        .editor-scroll-pane::-webkit-scrollbar-thumb, #ai-response-panel::-webkit-scrollbar-thumb, #comm-log-panel::-webkit-scrollbar-thumb, .consensus-panel::-webkit-scrollbar-thumb, #left-panel::-webkit-scrollbar-thumb {
-            background-color: var(--muted-text);
-            border-radius: 6px;
-            border: 3px solid var(--panel);
-        }
-
-        /* ----- Quantum Panels ----- */
-        #preview-panel {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            width: 80%;
-            height: 80%;
-            background: white;
-            border: 2px solid var(--accent);
-            border-radius: 5px;
-            z-index: 1000;
+            top: 10px;
+            right: 10px;
+            width: 45%;
+            max-width: 600px;
+            height: calc(100% - 20px);
+            background: rgba(40, 42, 35, 0.95);
+            backdrop-filter: blur(5px);
+            border: 1px solid #22241e;
+            border-radius: 8px;
+            padding: 15px;
+            box-sizing: border-box;
             display: none;
             flex-direction: column;
-            box-shadow: 0 0 30px rgba(0,0,0,.7);
-        }
-
-        #preview-header {
-            background: var(--header-bg);
-            color: #f0f0e0;
-            padding: 8px 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-bottom: 1px solid var(--accent);
-        }
-
-        #preview-content {
-            width: 100%;
-            height: calc(100% - 40px);
-            border: none;
-        }
-        
-        #ai-response-panel {
-            position: fixed;
-            bottom: calc(var(--footer-h) + 10px);
-            right: 20px;
-            width: 500px;
-            max-height: 600px;
-            background: var(--panel);
-            border: 1px solid var(--accent);
-            border-radius: 5px;
-            padding: 15px;
             overflow-y: auto;
             z-index: 100;
-            display: none;
-            flex-shadow: 0 4px 12px rgba(0,0,0,.3);
         }
         
         #close-ai-panel {
@@ -637,172 +537,185 @@
             background: transparent;
             border: none;
             color: var(--muted-text);
-            font-size: 18px;
+            font-size: 20px;
             cursor: pointer;
-            padding: 0;
-            width: 24px;
-            height: 24px;
-        }
-
-        /* Quantum Thinking Visualization */
-        .quantum-thinking {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 5;
         }
         
-        #agent-flow-canvas {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
-            pointer-events: none;
-            z-index: 999;
-            display: none;
+        #close-ai-panel:hover {
+            color: white;
         }
 
-        .fractal-node {
-            position: absolute;
-            width: 4px;
-            height: 4px;
+        #agent-cards-container {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .quantum-spinner {
+            width: 12px;
+            height: 12px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: var(--accent);
             border-radius: 50%;
-            background: var(--agent-cognito);
-            animation: fractalPulse 1.5s infinite alternate;
+            animation: spin 1s linear infinite;
+            flex-shrink: 0;
+            margin-top: 2px;
         }
-
-        @keyframes fractalPulse {
-            0% { transform: scale(1); opacity: 0.3; }
-            100% { transform: scale(1.5); opacity: 0.8; }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
         }
-
-        /* Agent Card Colors */
-        .agent-card[data-agent-name="Nexus"] { border-left-color: var(--agent-nexus); }
-        .agent-card[data-agent-name="Cognito"] { border-left-color: var(--agent-cognito); }
-        .agent-card[data-agent-name="Relay"] { border-left-color: var(--agent-relay); }
-        .agent-card[data-agent-name="Sentinel"] { border-left-color: var(--agent-sentinel); }
-        .agent-card[data-agent-name="Echo"] { border-left-color: var(--agent-echo); }
-        .agent-card[data-agent-name="Chrono"] { border-left-color: var(--agent-chrono); }
-        .agent-card[data-agent-name="Guardian"] { border-left-color: var(--agent-guardian); }
-        .agent-card[data-agent-name="Quasar"] { border-left-color: var(--agent-quasar); }
-        .agent-card[data-agent-name="Fractal"] { border-left-color: var(--agent-fractal); }
-
-
-        /* New Consensus Panel Styles */
-        #consensus-panel {
-            background: #2a2c21; /* Slightly different from panel */
-            border: 1px solid var(--agent-nexus);
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 15px; /* space between it and agent cards */
-            max-height: 250px;
-            overflow-y: auto;
+        
+        .consensus-panel {
+            background: var(--status-bg);
+            border: 1px solid #4a4e40;
+            border-radius: 6px;
+            padding: 10px;
+            margin-bottom: 15px;
         }
 
         .consensus-header {
-            font-weight: bold;
-            color: var(--agent-nexus);
-            margin-bottom: 10px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid #4a4e40;
-            padding-bottom: 8px;
+            font-weight: bold;
+            color: var(--muted-text);
+            margin-bottom: 8px;
+            font-size: 13px;
+        }
+        
+        .consensus-header span:last-child {
+            font-family: 'Fira Code', monospace;
+            font-size: 11px;
         }
 
+        #consensus-content, #top-agents-panel {
+            font-size: 12px;
+            line-height: 1.5;
+        }
+        
         .consensus-agent-block {
             margin-bottom: 8px;
         }
+        
+        .consensus-agent-block ul {
+            list-style-type: disc;
+            margin: 4px 0 0 20px;
+            padding: 0;
+            color: #ccc;
+        }
+        
+        #top-agents-panel {
+            margin-bottom: 20px;
+        }
 
-        .consensus-agent-block strong {
+        .top-agents-grid {
+            display: grid;
+            grid-template-columns: 100px 60px 1fr;
+            gap: 8px 12px;
+            align-items: center;
+            padding-top: 5px;
             font-size: 12px;
         }
 
-        .consensus-agent-block ul {
-            list-style-type: '» ';
-            padding-left: 15px;
-            margin: 4px 0 0 0;
-            font-size: 11px;
-            color: #ccc;
+        .top-agents-grid .agent-name {
+            font-weight: bold;
         }
+
+        .top-agents-grid .agent-score {
+            font-family: 'Fira Code', monospace;
+            text-align: right;
+        }
+
+        .top-agents-grid .agent-bar-container {
+            width: 100%;
+            background: var(--status-bg);
+            border-radius: 4px;
+            height: 10px;
+            overflow: hidden;
+            border: 1px solid #5a5e50;
+        }
+
+        .top-agents-grid .agent-bar {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s ease-out;
+        }
+
+        /* ----- Syntax Highlighting ----- */
+        .sh-comment { color: #6a9955; }
+        .sh-string { color: #ce9178; }
+        .sh-number { color: #b5cea8; }
+        .sh-keyword { color: #569cd6; }
+        .sh-function { color: #dcdcaa; }
+        .sh-bracket { color: #ffd700; }
+        .sh-op { color: #c586c0; }
+
     </style>
-<script type="importmap">
-{
-  "imports": {
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0"
-  }
-}
-</script>
 </head>
 <body>
     <header>
         <div class="left">
-            <button id="left-toggle">☰</button>
-            <div class="title quantum-pulse">Nemodian 2244-1</div>
+            <span class="quantum-pulse">2244-1</span>
+            <span>Nemodian Quantum Editor</span>
         </div>
         <div class="right">
-            <!-- More header buttons can go here -->
+            <button id="left-toggle" class="small">Config</button>
+            <button id="btn-run-tests" class="small warn">Test</button>
+            <button id="btn-deploy" class="small success">Deploy</button>
         </div>
     </header>
-
     <div id="status-bar">
-        <div>/path/to/current/file.ts</div>
-        <div>Ln 1, Col 1</div>
+        <div id="status-left">LN: 1, COL: 1</div>
+        <div id="status-right">UTF-8 | LF | Ready</div>
     </div>
-    
     <main id="editor-stage" class="left-panel-open">
-        <div id="left-panel">
-            <label for="config-selector">Configuration:</label>
+        <aside id="left-panel">
+            <div class="left-panel-header">Configuration</div>
+            <label for="config-selector">Agent Configuration</label>
             <select id="config-selector"></select>
             <button id="btn-load-config">Load</button>
             <hr>
-            <label for="config-name-input">Save Configuration As:</label>
-            <input type="text" id="config-name-input" placeholder="New Config Name">
+            <label for="config-name-input">Save Configuration As</label>
+            <input type="text" id="config-name-input" placeholder="New Config Name...">
             <button id="btn-save-config">Save</button>
             <hr>
-            <h4 class="left-panel-header">Persona Sets</h4>
-            <label for="persona-set-selector">Load Persona Set:</label>
-            <select id="persona-set-selector"></select>
-            <button id="btn-load-persona-set" class="small">Load Personas</button>
-            <label for="persona-set-name-input">Save Personas As:</label>
-            <input type="text" id="persona-set-name-input" placeholder="New Persona Set Name">
-            <button id="btn-save-persona-set" class="small">Save Personas</button>
-            <div id="persona-set-status" class="status-message"></div>
-            <hr>
-            <h4 class="left-panel-header">Agent Personas</h4>
-            <div id="persona-editor"></div>
-            <hr>
             <div class="left-panel-subheader">
+                <h4>Persona Set</h4>
+                <div id="persona-set-status" class="status-message"></div>
+            </div>
+            <select id="persona-set-selector"></select>
+            <button id="btn-load-persona-set">Apply Set</button>
+            <label for="persona-set-name-input">Save Current Personas As</label>
+            <input type="text" id="persona-set-name-input" placeholder="New Persona Set Name...">
+            <button id="btn-save-persona-set">Save Set</button>
+            <hr>
+            <div class="left-panel-header">Agent Personas</div>
+            <div id="persona-editor"></div>
+             <div class="left-panel-subheader">
                 <h4>Communication Log</h4>
                 <button id="btn-clear-log" class="small">Clear</button>
             </div>
             <div id="comm-log-panel"></div>
-        </div>
+        </aside>
         <div class="editor-container">
             <div class="editor-scroll-pane">
                 <div id="line-numbers" class="line-numbers">1</div>
                 <div id="editor" class="editor-content" contenteditable="true" spellcheck="false"></div>
             </div>
-            <canvas id="agent-flow-canvas"></canvas>
+            <div id="ai-response-panel">
+                <button id="close-ai-panel">×</button>
+            </div>
         </div>
     </main>
-    
     <footer>
-        <input id="prompt-input" type="text" placeholder="Enter your prompt here..." />
+        <input type="text" id="prompt-input" placeholder="Enter prompt for orchestration...">
         <div class="footer-options">
             <button id="btn-orchestrate" class="success">Orchestrate</button>
         </div>
     </footer>
+    <canvas id="agent-flow-canvas" style="display:none; position:absolute; top:0; left:0; pointer-events:none;"></canvas>
 
-    <div id="ai-response-panel">
-        <button id="close-ai-panel">×</button>
-        <!-- Consensus panel and Agent cards will be dynamically inserted here -->
-    </div>
-    
-    <script type="module" src="/index.js"></script>
+    <script type="module" src="./index.tsx"></script>
 </body>
 </html>
