@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Nemodian 2244-1 :: Quantum Fractal AI Editor</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --theme-bg: #3a3c31;
+            --panel: #313328;
+            --header-bg: #2e3026;
+            --status-bg: #22241e;
+            --accent: #4ac94a;
+            --muted-text: #999966;
+            --agent-nexus: #BB86FC;
+            --agent-cognito: #03DAC6;
+            --agent-relay: #FFD54F;
+            --agent-sentinel: #CF6679;
+            --agent-echo: #4ac94a;
+            --quantum-glow: rgba(187, 134, 252, 0.6);
+        }
+        body {
+            font-family: 'Fira Code', monospace;
+            background-color: var(--theme-bg);
+            color: #f0f0e0;
+        }
+        .sh-comment { color: #64748b; font-style: italic; }
+        .sh-string { color: #a3e635; }
+        .sh-number { color: #f59e0b; }
+        .sh-keyword { color: #f472b6; }
+        .sh-function { color: #4ac94a; }
+        .sh-bracket { color: #c084fc; }
+        .sh-op { color: #94a3b8; }
+        .sh-tag { color: #f472b6; }
+        .sh-property { color: #7dd3fc; }
+        .sh-text { color: #e2e8f0; }
+        .sh-unknown { color: #f87171; }
+
+        @keyframes quantumScan {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+        .animate-quantum-scan::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, var(--quantum-glow), transparent);
+            animation: quantumScan 3s infinite linear;
+        }
+
+        @keyframes quantumPulse {
+            0% { opacity: 0.7; transform: scale(1); }
+            100% { opacity: 1; transform: scale(1.05); }
+        }
+        .animate-quantum-pulse {
+            animation: quantumPulse 2s infinite alternate;
+        }
+        
+        @keyframes quantumSpin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .quantum-spinner::before {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 2px solid transparent;
+            border-top-color: var(--agent-cognito);
+            border-radius: 50%;
+            animation: quantumSpin 1s linear infinite;
+        }
+        .quantum-spinner::after {
+            content: '';
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            border: 2px solid transparent;
+            border-bottom-color: var(--agent-nexus);
+            border-radius: 50%;
+            animation: quantumSpin 0.5s linear infinite;
+        }
+
+        @keyframes fractalPulse {
+            0% { transform: scale(1); opacity: 0.3; }
+            100% { transform: scale(1.5); opacity: 0.8; }
+        }
+        .animate-fractal-pulse {
+            animation: fractalPulse 1.5s infinite alternate;
+        }
+    </style>
+<script type="importmap">
+{
+  "imports": {
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0"
+  }
+}
+</script>
+</head>
+<body class="bg-[#3a3c31] text-[#f0f0e0]">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+</body>
+</html>
