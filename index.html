@@ -38,6 +38,8 @@
             --agent-echo: #4ac94a;
             --agent-chrono: #FFB300;
             --agent-guardian: #1E88E5;
+            --agent-quasar: #9C27B0; /* New */
+            --agent-fractal: #009688; /* New */
             --quantum-glow: rgba(187, 134, 252, 0.6);
         }
 
@@ -234,6 +236,20 @@
             padding-bottom: 5px;
             font-size: 1em;
         }
+        
+        .left-panel-subheader {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 10px;
+            margin-bottom: 5px;
+        }
+        
+        .left-panel-subheader h4 {
+            margin: 0;
+            color: var(--accent);
+            font-size: 1em;
+        }
 
         #persona-editor {
             display: flex;
@@ -268,6 +284,43 @@
         .persona-input:focus {
             outline: none;
             border-color: var(--accent);
+        }
+        
+        #comm-log-panel {
+            max-height: 200px;
+            overflow-y: auto;
+            background: var(--status-bg);
+            border-radius: 3px;
+            padding: 8px;
+            font-size: 11px;
+            line-height: 1.4;
+        }
+        
+        .log-entry {
+            margin-bottom: 5px;
+            padding-bottom: 5px;
+            border-bottom: 1px solid #4a4e40;
+        }
+        
+        .log-entry:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+        
+        .log-sender, .log-receiver {
+            font-weight: bold;
+        }
+        
+        .log-arrow {
+            color: var(--muted-text);
+            margin: 0 4px;
+        }
+        
+        .log-message {
+            color: #ccc;
+            display: block;
+            margin-top: 2px;
+            padding-left: 4px;
         }
 
 
@@ -411,6 +464,34 @@
             align-items: center;
         }
 
+        .nexus-task-input-container {
+            margin-top: 10px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .nexus-task-input-container input {
+            flex: 1;
+            background: var(--status-bg);
+            border: 1px solid var(--muted-text);
+            color: #f0f0e0;
+            padding: 6px 8px;
+            border-radius: 3px;
+            font-family: inherit;
+            font-size: 12px;
+        }
+
+        .nexus-task-input-container input:focus {
+            outline: none;
+            border-color: var(--agent-nexus);
+        }
+
+        .nexus-task-input-container button {
+            background: var(--agent-nexus);
+            color: white;
+            border-color: var(--agent-nexus);
+        }
+        
         .quantum-spinner {
             width: 16px;
             height: 16px;
@@ -593,6 +674,8 @@
         .agent-card[data-agent-name="Echo"] { border-left-color: var(--agent-echo); }
         .agent-card[data-agent-name="Chrono"] { border-left-color: var(--agent-chrono); }
         .agent-card[data-agent-name="Guardian"] { border-left-color: var(--agent-guardian); }
+        .agent-card[data-agent-name="Quasar"] { border-left-color: var(--agent-quasar); }
+        .agent-card[data-agent-name="Fractal"] { border-left-color: var(--agent-fractal); }
 
 
         /* New Consensus Panel Styles */
@@ -652,6 +735,12 @@
             <hr>
             <h4 class="left-panel-header">Agent Personas</h4>
             <div id="persona-editor"></div>
+            <hr>
+            <div class="left-panel-subheader">
+                <h4>Communication Log</h4>
+                <button id="btn-clear-log" class="small">Clear</button>
+            </div>
+            <div id="comm-log-panel"></div>
         </div>
         <div class="editor-container">
             <div class="editor-scroll-pane">
